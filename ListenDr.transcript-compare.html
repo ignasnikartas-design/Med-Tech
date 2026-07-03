@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ListenDr — ar rodyti gyvą transkripciją? (A/B)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--teal:#0C7A83;--teal-tint:#EEF4F4;--border:#E2EAEA;--border2:#DCE6E6;--ink:#16302F;--field:#F7FAFA;--muted:#9AA7A7;--muted3:#7C8B8B;--red:#DC2626;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Figtree',system-ui,sans-serif;background:#F0F3F3;color:var(--ink);padding:28px;}
+  h1{font-size:20px;font-weight:700;margin:0 0 4px;}
+  .lead{font-size:13px;color:var(--muted3);margin:0 0 20px;}
+  .wrap{max-width:1040px;margin:0 auto;}
+  .vtab{flex:1;height:46px;border:1px solid var(--border2);background:#fff;border-radius:11px;font-size:14px;font-weight:600;color:var(--muted3);cursor:pointer;}
+  .vtab[aria-selected="true"]{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .pc h4{font-size:13px;font-weight:500;margin:0 0 8px;}
+  .pc li{font-size:13px;line-height:1.5;margin-bottom:6px;}
+  .pc ul{margin:0;padding-left:18px;}
+  .tline{display:grid;grid-template-columns:42px 44px 1fr;gap:8px;font-size:12px;padding:5px 0;align-items:baseline;}
+  .tline .ts{color:var(--muted3);}
+  .who{font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;text-align:center;}
+  .who.d{background:var(--teal-tint);color:var(--teal);}
+  .who.p{background:#fff;color:#555;border:1px solid var(--border);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Ar rodyti gyvą transkripciją įrašymo metu?</h1>
+  <p class="lead">Perjunk variantą. Rodoma vizito (įrašymo) būsena. Kontekstas: pokalbis su AI naudojamas daugiau prieš/po vizito, pastabos — vizito metu.</p>
+  <div role="tablist" style="display:flex;gap:10px;margin-bottom:16px;">
+    <button class="vtab" id="vA" role="tab" aria-selected="true">A — Rodoma gyva transkripcija</button>
+    <button class="vtab" id="vB" role="tab" aria-selected="false">B — Tik įrašymo indikatorius</button>
+  </div>
+  <div style="display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start;">
+    <div style="background:#FBFDFD;border:1px solid var(--border);border-radius:14px;padding:12px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Vizito metu (įrašymas įjungtas)</div>
+      <div id="frame" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px;min-height:360px;display:flex;flex-direction:column;gap:14px;"></div>
+    </div>
+    <div class="pc">
+      <div style="font-size:16px;font-weight:500;margin-bottom:2px;" id="pcTitle"></div>
+      <div id="pcSub" style="font-size:13px;color:var(--muted3);margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="background:#F1F6F6;border:1px solid #D6E6E6;border-radius:12px;padding:12px 14px;"><h4 style="color:#0F6E56;">Privalumai</h4><ul id="pros"></ul></div>
+        <div style="background:#FCEEEA;border:1px solid #F3D2C7;border-radius:12px;padding:12px 14px;"><h4 style="color:#993C1D;">Trūkumai</h4><ul id="cons"></ul></div>
+      </div>
+      <div id="rec" style="margin-top:12px;font-size:13px;line-height:1.55;background:#FAEEDA;border:1px solid #F0D9A8;border-radius:10px;padding:10px 12px;"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var recPill='<div style="display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--red);"></span><span style="font-size:14px;font-weight:600;color:var(--red);">Įrašoma · 02:14</span></div>';
+  var notes='<div><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;">GYDYTOJO PASTABOS</div><div style="min-height:70px;background:var(--field);border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-size:13px;color:#28403F;">Teigiamas Finkelšteino testas. Aptarti įtvarą.</div></div>';
+  var frameA=recPill+'<div style="flex:1;border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;overflow:hidden;"><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;">TRANSKRIPCIJA (GYVAI)</div><div class="tline"><span class="ts">00:04</span><span class="who d">Gyd.</span><span>Sveiki, dėl ko atvykote?</span></div><div class="tline"><span class="ts">00:09</span><span class="who p">Pac.</span><span>Tirpsta dešinys nykštys jau ~2 savaites.</span></div><div class="tline"><span class="ts">00:18</span><span class="who d">Gyd.</span><span>Pastovus ar tik judant?</span></div><div class="tline"><span class="ts">00:25</span><span class="who p">Pac.</span><span>Ištiesus ranką ir sukant riešą…<span style="color:var(--muted3);">▍</span></span></div></div>'+notes;
+  var frameB=recPill+'<div style="flex:1;border:1px solid var(--border);border-radius:12px;background:var(--field);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:0 24px;"><div style="width:52px;height:52px;border-radius:14px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg></div><div style="display:flex;gap:4px;align-items:center;height:26px;">'+[10,18,26,14,22,12,20,16,24,12,18,10].map(function(h){return '<span style="width:4px;height:'+h+'px;background:var(--teal);border-radius:2px;opacity:.7;"></span>';}).join('')+'</div><div style="font-size:14px;font-weight:500;color:#2B4241;">Įrašoma · 02:14</div><div style="font-size:12px;color:var(--muted3);max-width:240px;line-height:1.5;">Transkriptas ir E025 juodraštis bus paruošti po vizito.</div></div>'+notes;
+  var DATA={
+    A:{title:'A — Rodoma gyva transkripcija',sub:'Įrašymo metu ekrane teka pokalbio tekstas.',
+      pros:['Skaidrumas ir pasitikėjimas — gydytojas mato, ką sistema pagauna, klaidas pastebi iškart.','Galima pasitikslinti/pataisyti terminą vietoje.','Naudinga mokymuisi ir kontrolei.'],
+      cons:['Dėmesys nukrypsta į ekraną, ne pacientą — prieštarauja „eyes on patient".','Vizualinis triukšmas, didesnė kognityvinė apkrova.','Gyvo STT klaidos matomos → blaško/kelia nerimą.'],
+      rec:'Rinktis, jei svarbi realaus laiko kontrolė arba bendras ekranas su pacientu.'},
+    B:{title:'B — Tik įrašymo indikatorius',sub:'Ramus „Įrašoma" indikatorius; transkriptas — po vizito.',
+      pros:['Akys ant paciento — pagrindinis ambient-scribe principas (Nabla, Abridge).','Ramus, be triukšmo ekranas; maža apkrova.','Aiškus būsenos indikatorius — NN/g „visibility of system status".'],
+      cons:['Mažiau skaidru realiu laiku — nematyti, ar viskas pagaunama.','Klaidos pastebimos tik po vizito (Transkripcijos tabe).'],
+      rec:'Rekomenduoju: numatytas B + stiprus indikatorius, o po vizito — transkriptas su šaltinio sekimu (kaip Abridge). Gyvą transkriptą palikti kaip pasirinktį.'}
+  };
+  function render(v){
+    $('vA').setAttribute('aria-selected',v==='A'?'true':'false');$('vB').setAttribute('aria-selected',v==='B'?'true':'false');
+    $('frame').innerHTML=v==='A'?frameA:frameB;var d=DATA[v];$('pcTitle').textContent=d.title;$('pcSub').textContent=d.sub;
+    $('pros').innerHTML=d.pros.map(function(x){return '<li>'+x+'</li>';}).join('');
+    $('cons').innerHTML=d.cons.map(function(x){return '<li>'+x+'</li>';}).join('');
+    $('rec').innerHTML='<b style="font-weight:500;">Rekomendacija:</b> '+d.rec;
+  }
+  $('vA').onclick=function(){render('A');};$('vB').onclick=function(){render('B');};render('A');
+})();
+</script>
+</body>
+</html>

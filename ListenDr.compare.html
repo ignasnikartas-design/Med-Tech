@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ListenDr — pastabų/pokalbio variantų palyginimas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--teal:#0C7A83;--teal-tint:#EEF4F4;--border:#E2EAEA;--border2:#DCE6E6;--ink:#16302F;--field:#F7FAFA;--muted:#9AA7A7;--muted3:#7C8B8B;--red:#DC2626;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Figtree',system-ui,sans-serif;background:#F0F3F3;color:var(--ink);padding:28px;}
+  h1{font-size:20px;font-weight:700;margin:0 0 4px;}
+  .lead{font-size:13px;color:var(--muted3);margin:0 0 20px;}
+  .wrap{max-width:1040px;margin:0 auto;}
+  .vtab{flex:1;height:46px;border:1px solid var(--border2);background:#fff;border-radius:11px;font-size:14px;font-weight:600;color:var(--muted3);cursor:pointer;}
+  .vtab[aria-selected="true"]{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .seg{flex:1;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;background:var(--teal-tint);color:#8A9A9C;}
+  .seg[aria-selected="true"]{background:#fff;border-color:var(--teal);color:var(--teal);}
+  .act{height:34px;padding:0 12px;border-radius:9px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:#fff;color:#37504F;cursor:pointer;}
+  .act.p{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:600;}
+  .pc h4{font-size:13px;font-weight:500;margin:0 0 8px;}
+  .pc li{font-size:13px;line-height:1.5;margin-bottom:6px;}
+  .pc ul{margin:0;padding-left:18px;}
+  input:focus,button:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ListenDr — pastabų / pokalbio variantų palyginimas</h1>
+  <p class="lead">Perjunkite variantą viršuje. Rodomas kairysis stulpelis (kiti ekrano blokai — pacientai, E025, kontekstas — abiem varianams vienodi).</p>
+  <div role="tablist" aria-label="Variantai" style="display:flex;gap:10px;margin-bottom:16px;">
+    <button class="vtab" id="vA" role="tab" aria-selected="true">Variantas A — atskiri tabai</button>
+    <button class="vtab" id="vB" role="tab" aria-selected="false">Variantas B — pastabos + AI kartu</button>
+  </div>
+  <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;">
+    <div style="background:#FBFDFD;border:1px solid var(--border);border-radius:14px;padding:12px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Kairysis stulpelis</div>
+      <div id="col" style="background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:12px;min-height:430px;"></div>
+    </div>
+    <div class="pc">
+      <div style="font-size:16px;font-weight:500;margin-bottom:2px;" id="pcTitle"></div>
+      <div id="pcSub" style="font-size:13px;color:var(--muted3);margin-bottom:14px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="background:#F1F6F6;border:1px solid #D6E6E6;border-radius:12px;padding:12px 14px;"><h4 style="color:#0F6E56;">Privalumai</h4><ul id="pros"></ul></div>
+        <div style="background:#FCEEEA;border:1px solid #F3D2C7;border-radius:12px;padding:12px 14px;"><h4 style="color:#993C1D;">Trūkumai</h4><ul id="cons"></ul></div>
+      </div>
+      <div id="rec" style="margin-top:12px;font-size:13px;line-height:1.55;background:#FAEEDA;border:1px solid #F0D9A8;border-radius:10px;padding:10px 12px;"></div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var mic='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg>';
+  var lockNote='<div style="flex:1;min-height:150px;background:var(--field);border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:var(--muted3);padding:0 18px;"><div style="width:36px;height:36px;border-radius:10px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--muted);"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></div><div style="font-size:12px;">Pradėkite įrašymą, kad galėtumėte rašyti pastabas</div></div>';
+  var scribe='<button style="width:100%;height:46px;background:var(--teal);border:none;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">'+mic+' Pradėti įrašymą</button>';
+  var actions='<div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="act p">Rengti E025</button><button class="act">Siuntimas</button><button class="act">Receptas</button></div>';
+  var colA=scribe+'<div style="display:flex;gap:8px;"><button class="seg" aria-selected="false">Pokalbis su AI</button><button class="seg" aria-selected="true">Pastabos</button></div><div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);">GYDYTOJO PASTABOS</div>'+lockNote+actions;
+  var colB=scribe+'<div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);">GYDYTOJO PASTABOS</div>'+lockNote+'<div style="border-top:1px solid var(--border);padding-top:10px;"><div style="display:flex;align-items:center;gap:8px;color:#37504F;"><span style="flex:1;font-size:13px;font-weight:600;">Klausti ADA</span><span style="font-size:11px;color:var(--muted);">nekeičia pastabų</span></div><div style="margin-top:8px;display:flex;gap:8px;background:var(--field);border:1px solid var(--border);border-radius:10px;padding:6px 6px 6px 12px;"><input placeholder="Klauskite ADA…" style="flex:1;border:none;background:none;outline:none;font-size:13px;"><button style="width:30px;height:30px;border-radius:8px;background:var(--teal);border:none;color:#fff;cursor:pointer;">→</button></div></div>'+actions;
+  var DATA={
+    A:{title:'Variantas A — atskiri tabai (Pokalbis su AI | Pastabos)',sub:'Pokalbis ir pastabos vienas kitą pakeičia. Numatyta: Pastabos.',
+      pros:['Notes-first, atitinka ambient-scribe modelį (Nabla, Abridge).','Maža kognityvinė apkrova — vienas paviršius, pilnas plotis/aukštis.','Švari atskirtis: pastabos (įrašas) vs pokalbis (trumpalaikis).','Ramus ekranas; taupo stulpelio vietą.'],
+      cons:['Abipusis išskirtinumas — nematai pastabų ir AI atsakymo kartu.','Perjungimo trintis, jei dažnai reikia abiejų.','Rizika „kur dingo chatas" (sušvelninta neperskaityta žyma).'],
+      rec:'Geriausias, kai darbas sekvencinis: rašai pastabas, retkarčiais klausi AI.'},
+    B:{title:'Variantas B — Pastabos + „Klausti ADA" kartu',sub:'Pastabos visada matomos; AI klausimai — antriniame, sutraukiamame lauke.',
+      pros:['Pastabos visada matomos — pagrindinis darbas nepertraukiamas.','Gali matyti AI atsakymą ir pastabas vienu metu.','Nėra perjungimo trinties.'],
+      cons:['Du paviršiai dalijasi aukštį — pastabų laukas mažesnis, chatas ankštas.','Didesnė vizualinė apkrova, mažiau „ramus" ekranas.','„Klausti ADA" gali likti nepastebėtas (antraeilis).','Ilgesniam pokalbiui trūksta vietos.'],
+      rec:'Geriausias, kai darbas lygiagretus: dažnai skaitai AI atsakymą rašydamas pastabas.'}
+  };
+  function render(v){
+    $('vA').setAttribute('aria-selected',v==='A'?'true':'false');
+    $('vB').setAttribute('aria-selected',v==='B'?'true':'false');
+    $('col').innerHTML=v==='A'?colA:colB;
+    var d=DATA[v];$('pcTitle').textContent=d.title;$('pcSub').textContent=d.sub;
+    $('pros').innerHTML=d.pros.map(function(x){return '<li>'+x+'</li>';}).join('');
+    $('cons').innerHTML=d.cons.map(function(x){return '<li>'+x+'</li>';}).join('');
+    $('rec').innerHTML='<b style="font-weight:500;">Rekomendacija:</b> '+d.rec;
+    var segs=$('col').querySelectorAll('.seg');
+    segs.forEach(function(s){s.onclick=function(){segs.forEach(function(x){x.setAttribute('aria-selected','false');});s.setAttribute('aria-selected','true');};});
+  }
+  $('vA').onclick=function(){render('A');};$('vB').onclick=function(){render('B');};
+  render('A');
+})();
+</script>
+</body>
+</html>

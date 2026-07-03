@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ListenDr — Affidea Doctor Assistant (improved)</title>
+<!--
+  ListenDr — notes-driven variant, improved. Clean, editable, double-click vanilla
+  HTML/CSS/JS rebuilt from the uploaded ListenDr.dc.html — no build step, no framework.
+
+  This version implements the chosen direction (see
+  reports/design-comparison-2026-07-01-chat-vs-notes.md):
+   • Left column [Pokalbis su AI | Pastabos] segmented toggle, Notes default.
+   • Scribe + E025/Siuntimas/Receptas stay GLOBAL (outside the toggle).
+   • Drafts persist across the toggle (panels are hidden, never destroyed).
+   • Unread dot on the inactive "Pokalbis su AI" tab when AI replies arrive.
+   • A11y: role=tablist + arrow-key nav + aria-selected, aria-live save status,
+     role=switch context toggle, real disabled notes state, prefers-reduced-motion.
+  Palette (Affidea teal #0C7A83), copy and layout preserved from the original.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFDFD; --card:#fff; --border:#E2EAEA; --border-2:#DCE6E6;
+    --ink:#1B2A2A; --ink-strong:#16302F; --ink-field:#28403F;
+    --teal:#0C7A83; --teal-dark:#0A6971; --teal-deep:#0C3B3F; --teal-accent:#4FD3DE;
+    --teal-tint:#EEF4F4; --field:#F7FAFA; --muted:#9AA7A7; --muted-2:#8A9A9C; --muted-3:#7C8B8B;
+    --red:#DC2626; --patient-border:#C7E0E1;
+  }
+  html,body{margin:0;padding:0;}
+  *{box-sizing:border-box;}
+  body{font-family:'Figtree',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  input,textarea,button{font-family:inherit;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(100,116,116,.22);border-radius:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.35}}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:10px;}
+  :focus:not(:focus-visible){outline:none;}
+  .btn-hover:hover{filter:brightness(.97);}
+  textarea:disabled{cursor:not-allowed;}
+  /* segmented control */
+  .seg{flex:1;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:8px;
+       font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;background:var(--teal-tint);
+       color:var(--muted-2);transition:background .15s,color .15s,border-color .15s;position:relative;}
+  .seg[aria-selected="true"]{background:#fff;border-color:var(--teal);color:var(--teal);}
+  .seg:not([aria-selected="true"]):hover{color:#37504F;}
+  /* patients rail */
+  .pat-row{width:100%;text-align:left;background:none;border:none;padding:8px;border-radius:10px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .pat-row:hover{background:#F5F8F8;}
+  .pat-row[aria-current="true"]{background:var(--teal-tint);}
+  .pat-av{width:38px;height:38px;border-radius:11px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:12px;font-weight:700;flex-shrink:0;}
+  .pat-name{flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--ink-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pat-time{font-size:12px;color:var(--muted-3);flex-shrink:0;font-variant-numeric:tabular-nums;}
+  #grid.rail-collapsed{grid-template-columns:72px minmax(0,1fr) minmax(0,1.3fr) 320px;}
+  .rail-collapsed .rail-text,.rail-collapsed .pat-name,.rail-collapsed .pat-time{display:none !important;}
+  .rail-collapsed #recBtn{padding:0;gap:0;}
+  .rail-collapsed #railCaret{transform:rotate(180deg);}
+  /* suggested-question chips */
+  .chip{background:#F1F6F6;border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:12px;color:#37504F;cursor:pointer;white-space:nowrap;}
+  .chip:hover{background:var(--teal-tint);border-color:var(--teal);color:var(--teal);}
+  /* AI provenance (traceability) */
+  .ai-badge{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;background:var(--teal-tint);border:1px solid #BCDCDE;color:var(--teal);font-size:11px;font-weight:600;}
+  .src-btn{display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--muted-3);font-size:12px;cursor:pointer;padding:2px 4px;}
+  .src-btn:hover{color:var(--teal);}
+  .prov{margin-top:8px;padding:10px 12px;background:#F7FAFA;border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:0 8px 8px 0;font-size:12px;color:#4E6362;line-height:1.5;}
+  /* collapsed context chip */
+  #ctxChip{width:100%;height:100%;min-height:120px;background:#fff;border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 4px;cursor:pointer;color:var(--teal);}
+  #ctxChip:hover{background:var(--teal-tint);}
+  .ctx-vert{writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted);}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+<div style="width:100vw;height:100vh;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;">
+
+  <!-- ══ TOP NAV ══ -->
+  <header style="height:64px;flex-shrink:0;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;">
+    <div style="display:flex;align-items:center;gap:11px;">
+      <div style="width:44px;height:44px;border-radius:12px;background:var(--teal-deep);display:flex;align-items:center;justify-content:center;color:var(--teal-accent);" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"></path></svg>
+      </div>
+      <div style="line-height:1;">
+        <div style="font-size:19px;font-weight:800;letter-spacing:-.02em;color:var(--ink-strong);">ListenDr</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--teal);margin-top:3px;">LISTEN DOCTOR</div>
+      </div>
+    </div>
+    <button class="btn-hover" aria-label="Nauja sesija" style="height:40px;padding:0 14px;background:#fff;border:1px solid var(--border-2);border-radius:11px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#37504F;cursor:pointer;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+      Nauja sesija
+    </button>
+    <div style="flex:1;"></div>
+    <button aria-label="Paskyra" style="background:none;border:none;padding:0;position:relative;display:inline-flex;cursor:pointer;">
+      <div style="width:42px;height:42px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:600;">A</div>
+      <div style="position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;" aria-hidden="true">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#37504F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+    </button>
+  </header>
+
+  <!-- ══ BODY ══ -->
+  <main id="grid" style="flex:1;overflow:hidden;display:grid;grid-template-columns:248px minmax(0,1fr) minmax(0,1.3fr) 320px;gap:16px;padding:16px;">
+
+    <!-- ═ FAR LEFT: PATIENTS rail (scribe on top, collapsible) ═ -->
+    <aside id="patientsRail" aria-label="Pacientai" style="min-width:0;background:#fff;border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;">
+      <!-- scribe / start button (global, lives atop the patient list) -->
+      <div style="padding:16px;border-bottom:1px solid var(--border);flex-shrink:0;">
+        <button id="recBtn" class="btn-hover" aria-pressed="false" style="width:100%;height:52px;background:var(--teal);border:none;border-radius:13px;display:flex;align-items:center;justify-content:center;gap:10px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;">
+          <span id="scribeIcon" style="display:flex;" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg>
+          </span>
+          <span id="scribeLabel" class="rail-text">Pradėti įrašymą</span>
+          <span id="recTimer" style="display:none;font-variant-numeric:tabular-nums;font-size:14px;">00:00</span>
+        </button>
+      </div>
+      <!-- patient list -->
+      <div style="flex:1;overflow-y:auto;padding:10px 8px;">
+        <div class="rail-text" style="padding:8px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);">PACIENTAI</div>
+        <div class="rail-text" style="padding:6px 8px 2px;font-size:12px;color:var(--muted-2);">šiandien · 1</div>
+        <div id="patientList"></div>
+      </div>
+      <!-- collapse -->
+      <div style="border-top:1px solid var(--border);padding:8px;display:flex;justify-content:flex-end;flex-shrink:0;">
+        <button id="railCollapse" class="btn-hover" aria-label="Sutraukti pacientų sąrašą" aria-expanded="true" style="width:32px;height:32px;border:1px solid var(--border-2);background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted-3);cursor:pointer;">
+          <svg id="railCaret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ═ WORK: [CHAT | NOTES] toggle + GLOBAL ACTIONS ═ -->
+    <section aria-label="Pastabos ir pokalbis" style="min-width:0;background:#fff;border:1px solid var(--border);border-radius:18px;display:flex;flex-direction:column;padding:16px;overflow:hidden;">
+
+      <!-- segmented toggle: Chat | Notes (Notes default) -->
+      <div role="tablist" aria-label="Kairiojo stulpelio režimas" style="margin-top:14px;display:flex;gap:8px;flex-shrink:0;">
+        <button id="segChat" class="seg" role="tab" aria-selected="false" aria-controls="panelChat" tabindex="-1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-9A8.4 8.4 0 1 1 21 11.5z"></path></svg>
+          Pokalbis su AI
+          <span id="chatDot" hidden style="width:7px;height:7px;border-radius:50%;background:var(--red);"></span>
+        </button>
+        <button id="segNotes" class="seg" role="tab" aria-selected="true" aria-controls="panelNotes" tabindex="0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+          Pastabos
+        </button>
+      </div>
+
+      <!-- content area: swaps, drafts persist (hidden not destroyed) -->
+      <div style="flex:1;margin-top:14px;display:flex;flex-direction:column;min-height:0;">
+
+        <!-- NOTES panel (default) -->
+        <div id="panelNotes" role="tabpanel" aria-labelledby="segNotes" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;min-height:18px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);">GYDYTOJO PASTABOS</span>
+            <div style="flex:1;"></div>
+            <span id="saveStatus" role="status" aria-live="polite" style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:5px;"></span>
+          </div>
+          <div style="flex:1;min-height:0;position:relative;display:flex;">
+            <textarea id="notes" disabled aria-label="Gydytojo pastabos" placeholder="Rašykite stebėjimus, fizinės apžiūros duomenis, informaciją, kurios nepagauna kalba…" style="flex:1;min-height:0;width:100%;resize:none;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:14px;color:var(--ink-field);outline:none;line-height:1.6;"></textarea>
+            <div id="notesLock" style="position:absolute;inset:0;border-radius:12px;background:rgba(247,250,250,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:0 24px;">
+              <div style="width:40px;height:40px;border-radius:11px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--muted);" aria-hidden="true">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+              </div>
+              <div style="font-size:13px;color:var(--muted-3);max-width:230px;line-height:1.5;">Pradėkite įrašymą, kad galėtumėte rašyti pastabas</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">Pastabos automatiškai išsaugomos ir naudojamos kaip konsultacijos kontekstas.</div>
+        </div>
+
+        <!-- CHAT panel -->
+        <div id="panelChat" role="tabpanel" aria-labelledby="segChat" hidden style="flex:1;display:flex;flex-direction:column;min-height:0;">
+          <div id="chatThread" role="log" aria-live="polite" aria-label="Pokalbis su AI" style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:2px 2px 8px;">
+            <div style="align-self:flex-start;max-width:92%;padding:9px 12px;border-radius:11px;font-size:13px;line-height:1.5;background:#F1F6F6;color:#28403F;border:1px solid #E2EAEA;">
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--teal);margin-bottom:3px;">ADA</div>
+              Klauskite apie diagnozes, paciento istoriją ar tyrimus. Naudoju tik įjungtus konteksto šaltinius (dešinėje). Pastabos lieka atskiroje kortelėje.
+            </div>
+          </div>
+          <div id="askChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;flex-shrink:0;">
+            <button class="chip" data-q="Kokie skirtiniai diagnozei?">Skirtiniai diagnozei</button>
+            <button class="chip" data-q="Apibendrink paciento istoriją">Istorijos santrauka</button>
+            <button class="chip" data-q="Kokie tyrimai rekomenduojami?">Rekomenduojami tyrimai</button>
+          </div>
+          <form id="chatForm" style="display:flex;align-items:center;gap:8px;background:var(--field);border:1px solid var(--border);border-radius:10px;padding:6px 6px 6px 12px;flex-shrink:0;">
+            <input id="chatInput" autocomplete="off" aria-label="Žinutė ADA" placeholder="Klauskite ADA…" style="flex:1;min-width:0;background:none;border:none;outline:none;font-size:13px;color:var(--ink-field);">
+            <button type="submit" aria-label="Siųsti žinutę" class="btn-hover" style="width:34px;height:34px;border-radius:8px;background:var(--teal);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- GLOBAL AI actions (outside the toggle) -->
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;">
+        <button class="btn-hover" data-action="E025" style="height:38px;padding:0 15px;background:var(--teal);border:none;border-radius:10px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+          Rengti E025
+        </button>
+        <button class="btn-hover" data-action="Siuntimas" style="height:38px;padding:0 14px;background:#fff;border:1px solid var(--border-2);border-radius:10px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#37504F;cursor:pointer;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8B8B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v12H5.2L4 18z"></path><path d="M8 9h8M8 12h5"></path></svg>
+          Siuntimas
+        </button>
+        <button class="btn-hover" data-action="Receptas" style="height:38px;padding:0 14px;background:#fff;border:1px solid var(--border-2);border-radius:10px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#37504F;cursor:pointer;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8B8B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 20.5 3 13a5 5 0 0 1 7-7l1 1 1-1a5 5 0 0 1 7 7l-7.5 7.5a1.4 1.4 0 0 1-2 0z"></path></svg>
+          Receptas
+        </button>
+      </div>
+    </section>
+
+    <!-- ═ MIDDLE: NOTE EDITOR ═ -->
+    <section aria-label="Konsultacijos aprašymas" style="min-width:0;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="flex-shrink:0;background:#fff;border:1px solid var(--patient-border);border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+        <div style="width:46px;height:46px;border-radius:12px;background:#F1F5F5;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0;" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg>
+        </div>
+        <div style="min-width:0;">
+          <div id="patientName" style="font-size:18px;font-weight:600;color:var(--muted);">Pridėti paciento vardą</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums;">Vizitas · 2026-07-01 12:52</div>
+        </div>
+      </div>
+
+      <div role="tablist" aria-label="Dokumentas" style="flex-shrink:0;display:flex;gap:6px;border-bottom:1px solid var(--border);padding:0 4px;">
+        <button id="tab-E025" role="tab" aria-selected="true" data-tab="E025" style="height:44px;padding:0 20px;background:none;border:none;border-bottom:2.5px solid var(--teal);color:var(--teal);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:-1px;">E025</button>
+        <button id="tab-Trans" role="tab" aria-selected="false" data-tab="Transkripcija" style="height:44px;padding:0 20px;background:none;border:none;border-bottom:2.5px solid transparent;color:#8A9A9C;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:-1px;">Transkripcija</button>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:22px 4px 40px;">
+        <div id="panel-E025" role="tabpanel" aria-labelledby="tab-E025">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);">KONSULTACIJOS APRAŠYMAS</div>
+              <div style="font-size:22px;font-weight:700;color:var(--ink-strong);margin-top:3px;">E025</div>
+            </div>
+            <button class="btn-hover" style="height:40px;padding:0 16px;background:#fff;border:1px solid var(--border-2);border-radius:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#37504F;cursor:pointer;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7C8B8B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"></path></svg>
+              Laukai
+            </button>
+            <button class="btn-hover" style="height:40px;padding:0 16px;background:#EAF5F5;border:1px solid #BCDCDE;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--teal);cursor:pointer;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+              Užpildyti
+            </button>
+            <button class="btn-hover" style="height:40px;padding:0 18px;background:var(--teal);border:none;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+              Siųsti
+            </button>
+          </div>
+          <div style="border-top:1px solid #EDF2F2;"></div>
+
+          <div style="padding:22px 0;border-bottom:1px solid #EDF2F2;">
+            <button class="sec-toggle" data-sec="A" aria-expanded="true" aria-controls="sec-A" style="width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:40px;height:40px;border-radius:11px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path><path d="M12 7v5l3 3"></path></svg>
+              </div>
+              <div style="flex:1;text-align:left;font-size:18px;font-weight:700;color:var(--ink-strong);">Anamnezė</div>
+              <svg class="caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .18s;" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+            </button>
+            <div id="sec-A" style="margin-top:18px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="font-size:15px;font-weight:500;color:#2B4241;">Nusiskundimai ir anamnezė</span>
+                <span id="aiBadgeA" class="ai-badge" hidden>✨ AI juodraštis</span>
+                <div style="flex:1;"></div>
+                <button id="srcBtnA" class="src-btn" hidden aria-expanded="false" aria-controls="provA">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
+                  Šaltinis
+                </button>
+              </div>
+              <textarea id="anamText" aria-label="Nusiskundimai ir anamnezė" style="width:100%;min-height:120px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:14px;color:var(--ink-field);resize:vertical;outline:none;line-height:1.6;"></textarea>
+              <div id="provA" class="prov" hidden>Iš transkripcijos (00:25): „Atsiranda ištiesus ranką, ir kai suku riešą — tada skauda viršutinę nykščio dalį." + gydytojo pastabos.</div>
+            </div>
+          </div>
+
+          <div style="padding:22px 0;border-bottom:1px solid #EDF2F2;">
+            <button class="sec-toggle" data-sec="V" aria-expanded="true" aria-controls="sec-V" style="width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:40px;height:40px;border-radius:11px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"></path></svg>
+              </div>
+              <div style="flex:1;text-align:left;font-size:18px;font-weight:700;color:var(--ink-strong);">Kraujospūdis ir kvėpavimas</div>
+              <svg class="caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .18s;" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+            </button>
+            <div id="sec-V" style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+              <input aria-label="AKS-S, mmHg" placeholder="AKS-S, MMHG" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="AKS-D, mmHg" placeholder="AKS-D, MMHG" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="Pulsas, k./min" placeholder="PULSAS, K./MIN" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="Kvėpavimas, k./min" placeholder="KVĖPAV., K./MIN" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="Saturacija, %" placeholder="SATURACIJA, %" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="Promilės" placeholder="PROMILĖS" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="Temperatūra, °C" placeholder="TEMP., °C" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+            </div>
+          </div>
+
+          <div style="padding:22px 0;">
+            <button class="sec-toggle" data-sec="An" aria-expanded="true" aria-controls="sec-An" style="width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:40px;height:40px;border-radius:11px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"></path><path d="M14.5 12.5l-2 2M11.5 9.5l-2 2M8.5 6.5l-2 2M17.5 15.5l-2 2"></path></svg>
+              </div>
+              <div style="flex:1;text-align:left;font-size:18px;font-weight:700;color:var(--ink-strong);">Antropometriniai duomenys</div>
+              <svg class="caret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .18s;" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+            </button>
+            <div id="sec-An" style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+              <input aria-label="Ūgis, cm" placeholder="ŪGIS, CM" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="Svoris, kg" placeholder="SVORIS, KG" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+              <input aria-label="KMI" placeholder="KMI" style="height:64px;padding:14px 16px;background:var(--field);border:1px solid var(--border);border-radius:12px;font-size:13px;color:var(--ink-field);outline:none;">
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-Trans" role="tabpanel" aria-labelledby="tab-Trans" hidden>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center;color:var(--muted);">
+            <div style="width:56px;height:56px;border-radius:14px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);margin-bottom:16px;" aria-hidden="true">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg>
+            </div>
+            <div style="font-size:15px;font-weight:500;color:#4E6362;">Transkripcija dar nepradėta</div>
+            <div style="font-size:13px;margin-top:6px;">Paspauskite „Pradėti", kad įrašytumėte pokalbį.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═ RIGHT: CONTEXT (collapsible, persistent status chip) ═ -->
+    <aside id="ctxAside" aria-label="Kontekstas" style="min-width:0;display:flex;flex-direction:column;overflow:hidden;padding-left:4px;">
+      <!-- expanded -->
+      <div id="ctxFull" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);">KONTEKSTAS</div>
+          <button id="ctxCollapse" class="btn-hover" aria-label="Sutraukti kontekstą" aria-expanded="true" style="width:28px;height:28px;border:1px solid var(--border-2);background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted-3);cursor:pointer;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+          </button>
+        </div>
+        <div id="ctxCount" style="font-size:14px;font-weight:600;color:#37504F;margin-top:8px;">1 iš 1 maitina generavimo veiksmus</div>
+
+        <div style="margin-top:16px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--ink-strong);">Pokalbio pastabos</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px;">Pastabų: 1</div>
+          </div>
+          <button id="srcToggle" role="switch" aria-checked="true" aria-label="Naudoti pokalbio pastabas kaip kontekstą" style="width:42px;height:24px;border-radius:999px;border:none;padding:0;cursor:pointer;background:var(--teal);position:relative;flex-shrink:0;transition:background .18s;">
+            <div id="srcKnob" style="position:absolute;top:3px;left:21px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .18s;"></div>
+          </button>
+        </div>
+
+        <div style="flex:1;"></div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6;">Šaltinių perjungimas keičia tai, kas naudojama kitam generavimo veiksmui. Išjungti šaltiniai nebus naudojami, kol vėl neįjungsite.</div>
+      </div>
+      <!-- collapsed chip (persistent status) -->
+      <button id="ctxChip" hidden aria-label="Išskleisti kontekstą">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        <span class="ctx-vert">KONTEKSTAS · <span id="ctxChipCount">1/1</span></span>
+      </button>
+    </aside>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  // ── LEFT segmented toggle: Chat | Notes (accessible tablist) ─────────
+  var segNotes=$('segNotes'), segChat=$('segChat'), tabs=[segChat, segNotes];
+  function selectSeg(which, focus){
+    var notes = which==='notes';
+    segNotes.setAttribute('aria-selected', notes?'true':'false');
+    segChat.setAttribute('aria-selected', notes?'false':'true');
+    segNotes.tabIndex = notes?0:-1;
+    segChat.tabIndex = notes?-1:0;
+    $('panelNotes').hidden = !notes;   // hidden, not destroyed → drafts persist
+    $('panelChat').hidden = notes;
+    if(!notes){ $('chatDot').hidden = true; }          // clear unread on view
+    if(focus){ (notes?segNotes:segChat).focus(); }
+    if(!notes){ setTimeout(function(){ $('chatInput').focus(); }, 0); }
+  }
+  segNotes.addEventListener('click', function(){ selectSeg('notes'); });
+  segChat.addEventListener('click', function(){ selectSeg('chat'); });
+  // arrow-key navigation between the two tabs
+  [segChat, segNotes].forEach(function(t){
+    t.addEventListener('keydown', function(e){
+      if(e.key==='ArrowRight' || e.key==='ArrowLeft'){
+        e.preventDefault();
+        selectSeg(t===segChat ? 'notes' : 'chat', true);
+      }
+    });
+  });
+
+  // ── Patients rail ────────────────────────────────────────────────────
+  var PATIENTS = {
+    today: [{init:'OP', name:'Ona Petraitienė', time:'10:59'}],
+    older: [{init:'TV', name:'Tadas Vasiliauskas', time:'Tr'},
+            {init:'RJ', name:'Rasa Jonaitienė', time:'An'},
+            {init:'MK', name:'Marius Kazlauskas', time:'Pr'}]
+  };
+  function rowHtml(p, active){
+    return '<button class="pat-row" role="option" aria-current="'+(active?'true':'false')+'" data-name="'+p.name+'">'+
+           '<span class="pat-av" aria-hidden="true">'+p.init+'</span>'+
+           '<span class="pat-name">'+p.name+'</span>'+
+           '<span class="pat-time">'+p.time+'</span></button>';
+  }
+  (function buildPatients(){
+    var html = PATIENTS.today.map(function(p,i){ return rowHtml(p, i===0); }).join('');
+    html += '<div class="rail-text" style="padding:14px 8px 2px;font-size:12px;color:var(--muted-2);">senesni · '+PATIENTS.older.length+'</div>';
+    html += PATIENTS.older.map(function(p){ return rowHtml(p,false); }).join('');
+    $('patientList').innerHTML = html;
+    Array.prototype.forEach.call(document.querySelectorAll('.pat-row'), function(r){
+      r.addEventListener('click', function(){
+        Array.prototype.forEach.call(document.querySelectorAll('.pat-row'), function(x){ x.setAttribute('aria-current','false'); });
+        r.setAttribute('aria-current','true');
+        var n=$('patientName'); n.textContent=r.getAttribute('data-name'); n.style.color='var(--ink-strong)';
+      });
+    });
+  })();
+  // rail + context collapse (JS-managed grid so both sides can collapse)
+  var railCollapsed=false, ctxCollapsed=false;
+  function applyGrid(){
+    $('grid').style.gridTemplateColumns=(railCollapsed?'72px':'248px')+' minmax(0,1fr) minmax(0,1.3fr) '+(ctxCollapsed?'56px':'320px');
+  }
+  $('railCollapse').addEventListener('click', function(){
+    railCollapsed=!railCollapsed;
+    $('grid').classList.toggle('rail-collapsed', railCollapsed);
+    this.setAttribute('aria-expanded', railCollapsed?'false':'true');
+    applyGrid();
+  });
+  function setCtx(collapsed){
+    ctxCollapsed=collapsed;
+    $('ctxFull').hidden=collapsed;
+    $('ctxChip').hidden=!collapsed;
+    $('ctxCollapse').setAttribute('aria-expanded', collapsed?'false':'true');
+    applyGrid();
+  }
+  $('ctxCollapse').addEventListener('click', function(){ setCtx(true); });
+  $('ctxChip').addEventListener('click', function(){ setCtx(false); });
+
+  // ── Scribe / recording (button lives atop the patients rail) ─────────
+  var rec=false, elapsed=0, timer=null, saveT1=null, saveT2=null;
+  function fmt(t){ var m=Math.floor(t/60), r=t%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
+  function setSaveStatus(html, color){ var el=$('saveStatus'); el.innerHTML=html||''; el.style.color=color||'var(--muted)'; }
+  var CK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"></path></svg>';
+  function renderScribe(){
+    var b=$('recBtn');
+    b.style.background = rec ? 'var(--red)' : 'var(--teal)';
+    b.setAttribute('aria-pressed', rec?'true':'false');
+    $('scribeLabel').textContent = rec ? 'Stabdyti' : 'Pradėti įrašymą';
+    $('recTimer').style.display = rec ? 'inline' : 'none';
+    $('notes').disabled = !rec;
+    $('notesLock').style.display = rec ? 'none' : 'flex';
+    setSaveStatus(rec ? (CK+' Automatinis išsaugojimas') : '', 'var(--muted)');
+  }
+  $('recBtn').addEventListener('click', function(){
+    rec=!rec;
+    if(rec){ elapsed=0; $('recTimer').textContent='· '+fmt(0); timer=setInterval(function(){ elapsed++; $('recTimer').textContent='· '+fmt(elapsed); },1000); }
+    else { clearInterval(timer); timer=null; clearTimeout(saveT1); clearTimeout(saveT2); }
+    renderScribe();
+    selectSeg(rec?'notes':'chat');   // phase-aware: Notes during the visit, Chat before/after
+  });
+  $('notes').addEventListener('input', function(){
+    if(!rec) return;
+    clearTimeout(saveT1); clearTimeout(saveT2);
+    setSaveStatus('Rašoma…','var(--muted)');
+    saveT1=setTimeout(function(){
+      setSaveStatus('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="animation:spin .7s linear infinite;" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.5"></path></svg> Išsaugoma…','var(--muted)');
+      saveT2=setTimeout(function(){ setSaveStatus(CK+' Išsaugota · AI atnaujinta','var(--teal)'); },700);
+    },850);
+  });
+
+  // ── Middle document tabs ────────────────────────────────────────────
+  function selectDoc(tab){
+    var e=tab==='E025';
+    $('tab-E025').setAttribute('aria-selected', e?'true':'false');
+    $('tab-Trans').setAttribute('aria-selected', e?'false':'true');
+    $('tab-E025').style.color=e?'var(--teal)':'#8A9A9C';
+    $('tab-E025').style.borderBottomColor=e?'var(--teal)':'transparent';
+    $('tab-Trans').style.color=e?'#8A9A9C':'var(--teal)';
+    $('tab-Trans').style.borderBottomColor=e?'transparent':'var(--teal)';
+    $('panel-E025').hidden=!e; $('panel-Trans').hidden=e;
+  }
+  $('tab-E025').addEventListener('click', function(){ selectDoc('E025'); });
+  $('tab-Trans').addEventListener('click', function(){ selectDoc('Transkripcija'); });
+
+  // ── Collapsible sections ────────────────────────────────────────────
+  Array.prototype.forEach.call(document.querySelectorAll('.sec-toggle'), function(btn){
+    btn.addEventListener('click', function(){
+      var open = btn.getAttribute('aria-expanded')!=='true';
+      btn.setAttribute('aria-expanded', open?'true':'false');
+      $('sec-'+btn.getAttribute('data-sec')).style.display = open?'':'none';
+      btn.querySelector('.caret').style.transform = open?'rotate(0deg)':'rotate(180deg)';
+    });
+  });
+
+  // ── Context source toggle ───────────────────────────────────────────
+  var srcOn=true;
+  $('srcToggle').addEventListener('click', function(){
+    srcOn=!srcOn;
+    this.setAttribute('aria-checked', srcOn?'true':'false');
+    this.style.background = srcOn?'var(--teal)':'#D4DEDE';
+    $('srcKnob').style.left = srcOn?'21px':'3px';
+    $('ctxCount').textContent = (srcOn?'1':'0')+' iš 1 maitina generavimo veiksmus';
+    $('ctxChipCount').textContent = (srcOn?'1':'0')+'/1';
+  });
+
+  // ── Chat: cited + physician-gated, with suggested-question chips ──────
+  function addMsg(who, text, review){
+    var t=$('chatThread'), mine=who==='me';
+    var wrap=document.createElement('div');
+    wrap.style.cssText='max-width:92%;align-self:'+(mine?'flex-end':'flex-start')+';padding:9px 12px;border-radius:11px;font-size:13px;line-height:1.5;'+
+      (mine?'background:var(--teal);color:#fff;':'background:#F1F6F6;color:#28403F;border:1px solid #E2EAEA;');
+    if(!mine){ var l=document.createElement('div'); l.textContent='ADA'; l.style.cssText='font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--teal);margin-bottom:3px;'; wrap.appendChild(l); }
+    wrap.appendChild(document.createTextNode(text));
+    if(review){ var r=document.createElement('div'); r.textContent='⚠ Peržiūrėkite — AI siūlymas, remiasi įjungtu kontekstu.'; r.style.cssText='margin-top:6px;font-size:11px;color:var(--muted-3);'; wrap.appendChild(r); }
+    t.appendChild(wrap); t.scrollTop=t.scrollHeight;
+    if($('panelChat').hidden && !mine){ $('chatDot').hidden=false; }
+  }
+  function answer(q){
+    q=(q||'').toLowerCase();
+    if(/ddx|diagnoz|differen|skirtin/.test(q)) return {t:'Pagal pastabas ir kontekstą svarstytina: 1) de Kerveno tenosinovitas, 2) riešo kanalo sindromas, 3) C6 radikulopatija.', r:true};
+    if(/istorij|anamnez|vizit|history|praeit/.test(q)) return {t:'Paskutiniai 3 vizitai: kardiologija (AKS kontrolė), BPG (ŪRI), BPG (profil. patikra). Norite santraukos į E025?', r:true};
+    if(/tyrim|lab|kraujo|hba1c|cholesterol/.test(q)) return {t:'Naujausi tyrimai rodo HbA1c ir LDL kilimą. Galiu paruošti pakartotinių tyrimų užsakymą.', r:true};
+    if(/recept|vaist|dozuot|prescrib/.test(q)) return {t:'Galiu paruošti recepto juodraštį — nurodykite vaistą arba leiskite pasiūlyti pagal diagnozę.', r:false};
+    return {t:'Remiuosi tik įjungtais konteksto šaltiniais (Kontekstas dešinėje). Patikslinkite — pvz. „skirtiniai diagnozei?" arba „apibendrink istoriją".', r:false};
+  }
+  function askAI(v){ v=(v||'').trim(); if(!v) return; selectSeg('chat'); addMsg('me', v); var a=answer(v); setTimeout(function(){ addMsg('ada', a.t, a.r); }, 350); }
+  $('chatForm').addEventListener('submit', function(e){ e.preventDefault(); askAI($('chatInput').value); $('chatInput').value=''; });
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function(c){
+    c.addEventListener('click', function(){ askAI(c.getAttribute('data-q')); });
+  });
+
+  // ── Global actions: auto-surface context + traceability on E025 ──────
+  var ACTION_REPLY={
+    'E025':'Parengiau E025 juodraštį iš pastabų ir konteksto — peržiūrėkite laukus centre. ✨ pažymėti laukai užpildyti AI, su šaltiniu.',
+    'Siuntimas':'Sugeneravau siuntimo (E027) juodraštį. Peržiūrėkite prieš patvirtindami.',
+    'Receptas':'Pasiūlytas receptas pridėtas kaip juodraštis. Patvirtinimo reikia iš gydytojo.'
+  };
+  function fillE025(){
+    $('anamText').value='Pacientas skundžiasi ~2 sav. trukmės dešiniojo nykščio tirpimu; skausmas ištiesus ranką ir sukant riešą. Be kaklo skausmo, be silpnumo.';
+    $('aiBadgeA').hidden=false; $('srcBtnA').hidden=false;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-action]'), function(b){
+    b.addEventListener('click', function(){
+      var a=b.getAttribute('data-action');
+      setCtx(false);                       // auto-surface sources at generation
+      if(a==='E025'){ selectDoc('E025'); fillE025(); }
+      addMsg('ada', ACTION_REPLY[a]||'Atlikta.');
+    });
+  });
+  // traceability: reveal the source a field was drafted from
+  $('srcBtnA').addEventListener('click', function(){
+    var open=$('provA').hidden; $('provA').hidden=!open;
+    this.setAttribute('aria-expanded', open?'true':'false');
+    this.querySelector('svg').style.transform=open?'rotate(90deg)':'';
+  });
+
+  selectSeg('chat');   // before the visit: Chat is front (prep); Notes takes over on record
+  renderScribe();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADA — Affidea Doctor Assistant</title>
+
+  <!-- Figtree (design font) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React + Babel via CDN (no build step; cached after first load) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
+
+  <!-- Content / mock data — edit patient info, notes, referrals here -->
+  <script src="ada-mock.js"></script>
+
+  <!-- App component (JSX, transformed in-browser by Babel) -->
+  <script type="text/babel" data-presets="react">
+// ADA-app.jsx — Full ADA app, V1 design, all functionality preserved
+(function () {
+  const { useState, useEffect, useRef, useCallback, useMemo } = React;
+  const M = window.ADA_MOCK;
+
+  // ====================================================================
+  // Icons (inline lucide-style)
+  // ====================================================================
+  const I = {
+    Dashboard: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>,
+    Users: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></svg>,
+    Chats: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+    Docs: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14,2 14,8 20,8" /></svg>,
+    ChevDown: <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>,
+    ChevUp: <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6" /></svg>,
+    Mic: <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" /></svg>,
+    MicSm: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" /><line x1="8" y1="22" x2="16" y2="22" /></svg>,
+    Plus: <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>,
+    Phone: <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.7" viewBox="0 0 24 24" style={{ width: "20px", height: "20px" }}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z" /></svg>,
+    PhoneEnd: <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" viewBox="-5 -5 34 34"><g transform="rotate(135 12 12)"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92Z" /></g></svg>,
+    Sparkles: <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3M6.343 6.343l-.707-.707M7.5 20.5L12 16l4.5 4.5" /></svg>,
+    Send: <svg width="13" height="13" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12,5 19,12 12,19" /></svg>,
+    Notebook: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6M9 16h4" /></svg>,
+    Activity: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>,
+    Clipboard: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M9 14l2 2 4-4" /></svg>,
+    Flask: <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M10 2v7.31M14 9.3V1.99M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0M5.52 16h12.96" /></svg>,
+    Pencil: <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>,
+    Alert: <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
+    AlertLg: <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ width: "20px", height: "20px" }}><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>,
+    Rotate: <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M3 21v-5h5" /></svg>,
+    Search: <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>,
+    Play: <svg width="13" height="13" fill="white" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8V4z" /></svg>,
+    Pause: <svg width="13" height="13" fill="white" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg>,
+    Check: <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>,
+    X: <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
+    PushArrow: <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ width: "20px", height: "20px" }}><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12,5 19,12 12,19" /></svg>,
+    SendChip: <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>,
+    Pill: <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M10.5 20.5a4.95 4.95 0 0 1-7-7L13.5 3.5a4.95 4.95 0 0 1 7 7Z" /><path d="M8.5 8.5l7 7" /></svg>,
+    Beaker: <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5a2 2 0 0 1-2-2V9m6 5h10a2 2 0 0 0 2-2V9" /></svg>,
+    LogOut: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>,
+    ChevR: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>,
+    PanelLeftClose: <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m16 15-3-3 3-3" /></svg>,
+    PanelLeftOpen: <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m14 9 3 3-3 3" /></svg>,
+    Paperclip: <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 17.93 8.8l-8.55 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>,
+    Layers: <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5z" /><path d="m2 17 10 5 10-5" /><path d="m2 12 10 5 10-5" /></svg>,
+    MessageSquare: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>,
+    XClose: <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>,
+    WifiOff: <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="2" y1="2" x2="22" y2="22" /><path d="M8.5 16.429a5 5 0 0 1 7 0" /><path d="M5 12.859a10 10 0 0 1 5.17-2.69" /><path d="M19 12.859a10 10 0 0 0-2.007-1.523" /><path d="M2 8.82a15 15 0 0 1 4.177-2.643" /><path d="M22 8.82a15 15 0 0 0-11.288-3.764" /><line x1="12" y1="20" x2="12.01" y2="20" /></svg>,};
+
+  // ====================================================================
+  // Settings Menu
+  // ====================================================================
+  function SettingsMenu({ open, onClose, scribingLang, setScribingLang, uiLang, setUiLang }) {
+    const ref = useRef(null);
+    const [view, setView] = useState("main");
+    const SCRIBING_LANGS = ["Lithuanian", "English", "Russian", "Polish"];
+    const INTERFACE_LANGS = ["English", "Lietuvių"];
+    useEffect(() => {
+      if (!open) return;
+      setView("main");
+      const onMouseDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+      const onKey = (e) => { if (e.key === "Escape") onClose(); };
+      document.addEventListener("mousedown", onMouseDown);
+      document.addEventListener("keydown", onKey);
+      return () => {
+        document.removeEventListener("mousedown", onMouseDown);
+        document.removeEventListener("keydown", onKey);
+      };
+    }, [open, onClose]);
+    if (!open) return null;
+    const langView = (title, options, current, onPick) => (
+      <div>
+        <button className="settings-row" onClick={() => setView("main")} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+          <span className="ico" style={{ transform: "rotate(180deg)" }}>{I.ChevR}</span>
+          <span className="label" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--muted)", fontWeight: 600 }}>{title}</span>
+        </button>
+        {options.map((opt) => (
+          <button key={opt} className="settings-row" onClick={() => onPick(opt)} style={{ borderBottom: "none" }}>
+            <span className="ico" />
+            <span className="label">{opt}</span>
+            {opt === current && <span className="value">{I.Check}</span>}
+          </button>))}
+      </div>);
+    return (
+      <div className="settings-menu" ref={ref}>
+        {view === "main" && (
+          <div>
+            <div className="settings-profile">
+              <div className="settings-name">Mindaugas J.</div>
+              <div className="settings-email">m.jonaitis@affidea.lt</div>
+            </div>
+            <button className="settings-row" onClick={() => setView("scribing")} style={{ borderBottom: "none" }}>
+              <span className="ico">{I.MicSm}</span>
+              <span className="label">Scribing language</span>
+              <span className="value">{scribingLang} {I.ChevR}</span>
+            </button>
+            <button className="settings-row" onClick={() => setView("interface")}>
+              <span className="ico">{I.Chats}</span>
+              <span className="label">Interface language</span>
+              <span className="value">{uiLang} {I.ChevR}</span>
+            </button>
+            <button className="settings-row danger" onClick={onClose}>
+              <span className="ico">{I.LogOut}</span>
+              <span className="label">Sign out</span>
+            </button>
+          </div>)}
+        {view === "scribing" && langView("Scribing language", SCRIBING_LANGS, scribingLang, (v) => { setScribingLang(v); setView("main"); })}
+        {view === "interface" && langView("Interface language", INTERFACE_LANGS, uiLang, (v) => { setUiLang(v); setView("main"); })}
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Top Nav
+  // ====================================================================
+  function TopNav({ scribingLang, setScribingLang, uiLang, setUiLang }) {
+    const [navTab, setNavTab] = useState("dashboard");
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const links = [];
+
+    return (
+      <div className="topnav">
+        <div className="nav-logo">
+          <div className="nav-logo-icon">A</div>
+          <span className="nav-logo-name">ADA</span>
+        </div>
+        <div className="nav-links">
+          {links.map((l) =>
+          <button
+            key={l.id}
+            className={`nav-link${navTab === l.id ? " active" : ""}`}
+            onClick={() => setNavTab(l.id)}>
+            
+              {l.icon}
+              {l.label}
+            </button>
+          )}
+        </div>
+        <div className="nav-right">
+          <div className="settings-anchor">
+            <button
+              className="nav-av-btn"
+              onClick={() => setSettingsOpen((o) => !o)}
+              aria-label="Profile and settings">
+              <span className="nav-av">MJ</span>
+              <span className="nav-av-chev">{I.ChevDown}</span>
+            </button>
+            <SettingsMenu
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+              scribingLang={scribingLang}
+              setScribingLang={setScribingLang}
+              uiLang={uiLang}
+              setUiLang={setUiLang} />
+            
+          </div>
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Scribe Widget
+  // ====================================================================
+  
+
+  // ====================================================================
+  // Patient List
+  // ====================================================================
+  const AV_COLORS = [
+  { bg: "#F3E8FF", c: "#7C3AED" },
+  { bg: "#FCE7F3", c: "#BE185D" },
+  { bg: "#ECFDF5", c: "#065F46" },
+  { bg: "#FEF3C7", c: "#92400E" }];
+
+
+  function PatientRow({ p, active }) {
+    return (
+      <button className={`pat-row${active ? " active" : ""}`}>
+        <div className="pat-av">{p.initials}</div>
+        <div className="pat-info">
+          <div className="pat-name">{p.name}</div>
+        </div>
+        <span className="pat-time">{p.time}</span>
+      </button>);
+
+  }
+
+  function PatientListCard({ scribing, seconds, toggle, onCollapse }) {
+    const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    return (
+      <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ padding: 16, borderBottom: "1px solid var(--border-soft)" }}>
+          <button className={`scribe-trigger${scribing ? " recording" : ""}`} onClick={toggle}>
+            {scribing ? <span className="rec-dot" /> : I.Mic}
+            <span className="scribe-trigger-label">
+              {scribing ? `Stop scribing · ${fmt(seconds)}` : "Start scribing"}
+            </span>
+          </button>
+        </div>
+        <div className="card-head" style={{ borderBottom: "none", padding: "14px 16px 0" }}>
+          <span className="card-title" style={{ fontSize: "14px", lineHeight: "1.4", letterSpacing: "0px" }}>Patients</span>
+        </div>
+        <div className="patient-list">
+          <div className="day-sep">today · {M.patientsToday.length}</div>
+          {M.patientsToday.map((p, i) =>
+          <PatientRow key={p.id} p={p} active={!!p.active} />
+          )}
+          <div className="day-sep day-sep-older">older · {M.patientsOlder.length}</div>
+          {M.patientsOlder.map((p, i) =>
+          <PatientRow key={p.id} p={p} active={false} />
+          )}
+        </div>
+        <div className="card-footer-collapse">
+          <button className="collapse-btn-footer" onClick={onCollapse} aria-label="Collapse sidebar">{I.PanelLeftClose}</button>
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Patient Header (center column)
+  // ====================================================================
+  function PatientHeader() {
+    const [name, setName] = useState("");
+    const initials = name.trim() ? name.trim().split(/\s+/).map((w) => w[0] || "").slice(0, 2).join("").toUpperCase() : "—";
+    return (
+      <div className="card patient-header-card">
+        <div className="ph-id">
+          <div className="ph-av" style={!name.trim() ? { background: "var(--border-soft)", color: "var(--muted)" } : null}>{initials}</div>
+          <div className="ph-text" style={{ flex: 1, minWidth: 0 }}>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Add patient name"
+              aria-label="Patient name"
+              style={{
+                width: "100%",
+                padding: "4px 8px",
+                margin: "-4px -8px",
+                background: "transparent",
+                border: "1px solid transparent",
+                borderRadius: 6,
+                fontFamily: "inherit",
+                fontSize: 16, fontWeight: 700,
+                color: "var(--ink)",
+                outline: "none",
+                transition: "background 120ms, border-color 120ms"
+              }}
+              onFocus={(e) => { e.currentTarget.style.background = "white"; e.currentTarget.style.borderColor = "var(--teal)"; }}
+              onBlur={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+              onMouseEnter={(e) => { if (document.activeElement !== e.currentTarget) e.currentTarget.style.background = "var(--border-soft)"; }}
+              onMouseLeave={(e) => { if (document.activeElement !== e.currentTarget) e.currentTarget.style.background = "transparent"; }} />
+            <div className="ph-encounter">Encounter 04-17 · Apr 17, 2026</div>
+          </div>
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Context curation
+  // ====================================================================
+  function Toggle({ on, onChange }) {
+    return (
+      <button
+        type="button"
+        onClick={onChange}
+        role="switch"
+        aria-checked={on}
+        style={{
+          width: 32, height: 18, borderRadius: 999,
+          background: on ? "var(--teal)" : "#D5DBE3",
+          border: "none", position: "relative", cursor: "pointer",
+          transition: "background 150ms cubic-bezier(0, 0, 0.2, 1)",
+          flexShrink: 0, padding: 0
+        }}>
+        <span style={{
+          position: "absolute", top: 2, left: on ? 16 : 2,
+          width: 14, height: 14, borderRadius: "50%",
+          background: "white",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+          transition: "left 150ms cubic-bezier(0, 0, 0.2, 1)"
+        }} />
+      </button>);
+
+  }
+
+  function ContextDrawer({ sources, onToggle, onClose }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+      const onKey = (e) => { if (e.key === "Escape") onClose(); };
+      document.addEventListener("mousedown", onDown);
+      document.addEventListener("keydown", onKey);
+      return () => {
+        document.removeEventListener("mousedown", onDown);
+        document.removeEventListener("keydown", onKey);
+      };
+    }, [onClose]);
+    const selectedCount = sources.filter((s) => s.selected).length;
+    return (
+      <div ref={ref} style={{
+        margin: "0 16px 8px",
+        background: "white",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+        overflow: "hidden"
+      }}>
+        <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-soft)" }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>Context for this visit</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{selectedCount} of {sources.length} feeding generation actions</div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "var(--muted)", padding: 4, cursor: "pointer", display: "inline-flex" }}>{I.XClose}</button>
+        </div>
+        <div style={{ maxHeight: 240, overflowY: "auto" }}>
+          {sources.map((s) =>
+          <div key={s.id} style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid var(--border-soft)" }}>
+              <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: s.type === "transcript" ? "var(--teal-tint)" : "#FAFAFA",
+              border: `1px solid ${s.type === "transcript" ? "var(--teal-border)" : "var(--border)"}`,
+              color: s.type === "transcript" ? "var(--teal)" : "var(--muted)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0
+            }}>
+                {s.type === "transcript" ? I.MicSm : I.MessageSquare}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{s.sub}</div>
+              </div>
+              <Toggle on={s.selected} onChange={() => onToggle(s.id)} />
+            </div>
+          )}
+          {sources.length === 0 &&
+          <div style={{ padding: "20px 14px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              No sources yet. Add an observation in the composer below.
+            </div>
+          }
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Context Side Panel (Variant B)
+  // ====================================================================
+  function ContextPanel({ sources, onToggle }) {
+    const selectedCount = sources.filter((s) => s.selected).length;
+    return (
+      <div className="card" style={{ display: "flex", flexDirection: "column", overflow: "hidden", flex: 1 }}>
+        <div style={{
+          padding: "14px 16px",
+          borderBottom: "1px solid var(--border-soft)"
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Context</div>
+          <div style={{ fontSize: 13, color: "var(--ink)", marginTop: 4 }}>
+            <span style={{ fontWeight: 600 }}>{selectedCount} of {sources.length}</span> feeding generation actions
+          </div>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {sources.map((s) =>
+          <div key={s.id} style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid var(--border-soft)" }}>
+              <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: s.type === "transcript" ? "var(--teal-tint)" : "#FAFAFA",
+              border: `1px solid ${s.type === "transcript" ? "var(--teal-border)" : "var(--border)"}`,
+              color: s.type === "transcript" ? "var(--teal)" : "var(--muted)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0
+            }}>
+                {s.type === "transcript" ? I.MicSm : I.MessageSquare}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: "var(--ink)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: s.selected ? 500 : 400, opacity: s.selected ? 1 : 0.6 }}>{s.label}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{s.sub}</div>
+              </div>
+              <Toggle on={s.selected} onChange={() => onToggle(s.id)} />
+            </div>
+          )}
+          {sources.length === 0 &&
+          <div style={{ padding: "20px 14px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              No sources yet. Add an observation via the composer.
+            </div>
+          }
+        </div>
+        <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border-soft)", background: "#FAFAFA", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+          Toggling sources here changes what feeds the next generation action. Sources marked off won't be used until re-enabled.
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Chat
+  // ====================================================================
+  function ChatCard({ messages, onSend, onAction, scribing, scribeSeconds, onToggleScribe, sources, onToggleSource, onAddObservation }) {
+    const [val, setVal] = useState("");
+    const scrollRef = useRef(null);
+    useEffect(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }, [messages.length]);
+
+    const quickActions = [
+    { icon: I.Docs, label: "Draft E025" },
+    { icon: I.SendChip, label: "Generate Referral (E027)" },
+    { icon: I.Pill, label: "Draft Prescription" },
+    { icon: I.Beaker, label: "Order Tests" }];
+
+
+    const submit = () => {
+      const t = val.trim();
+      if (!t) return;
+      onSend(t);
+      setVal("");
+    };
+    const addAsObservation = () => {
+      const t = val.trim();
+      if (!t || !onAddObservation) return;
+      onSend(t);
+      onAddObservation(t);
+      setVal("");
+    };
+    const hasText = val.trim().length > 0;
+
+    const [contextOpen, setContextOpen] = useState(false);
+    const selectedCount = (sources || []).filter((s) => s.selected).length;
+
+    const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+    return (
+      <div className="card chat-card">
+        <div style={{
+          display: "flex",
+          justifyContent: "center",
+          flexShrink: 0,
+          padding: "16px 16px 4px"
+        }}>
+          <button
+            onClick={onToggleScribe}
+            aria-label={scribing ? "Stop scribing" : "Start scribing"}
+            style={{
+              width: 320,
+              padding: "8px 8px 8px 14px",
+              background: scribing ? "#FAFAFA" : "var(--teal-tint)",
+              border: `1px solid ${scribing ? "#FECACA" : "var(--teal-border)"}`,
+              color: "var(--ink)",
+              borderRadius: 8,
+              fontSize: 16,
+              fontWeight: 500,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              cursor: "pointer",
+              transition: "background 150ms, border-color 150ms, color 150ms"
+            }}>
+            {scribing ? <span className="rec-dot" /> : React.cloneElement(I.Mic, { width: 20, height: 20, strokeWidth: 1.8 })}
+            <span style={{ flex: 1, textAlign: "left", fontVariantNumeric: scribing ? "tabular-nums" : "normal" }}>
+              {scribing ? `Recording · ${fmtTime(scribeSeconds || 0)}` : "Ready to scribe"}
+            </span>
+            <span style={{
+              padding: "6px 14px",
+              background: scribing ? "var(--border-soft)" : "white",
+              border: scribing ? "none" : "1px solid var(--teal-border)",
+              color: scribing ? "var(--ink)" : "var(--teal)",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 500,
+              display: "inline-flex",
+              alignItems: "center"
+            }}>
+              {scribing ? "Stop" : "Start"}
+            </span>
+          </button>
+        </div>
+        <div className="chat-msgs" ref={scrollRef}>
+          {messages.map((m, i) =>
+          m.role === "assistant" ?
+          <div key={i} className="ai-msg">
+                {m.content}
+              </div> :
+
+          <div key={i} className="user-msg">{m.content}</div>
+
+          )}
+        </div>
+        <div className="quick-chips" style={{ fontSize: "12px" }}>
+          {quickActions.map((a) =>
+          <button key={a.label} className="q-chip" onClick={() => onAction(a.label)}>
+              {a.icon} {a.label}
+            </button>
+          )}
+        </div>
+        <div className="chat-input-area">
+          <div className="input-box">
+            <input
+              type="text"
+              placeholder="How else can I help?"
+              value={val}
+              onChange={(e) => setVal(e.target.value)}
+              onKeyDown={(e) => {if (e.key === "Enter") submit();}} />
+
+            <button className="input-icon-btn" aria-label={scribing ? "Stop scribing" : "Start scribing"} onClick={onToggleScribe}>
+              {scribing ? <span className="rec-dot" /> : I.Mic}
+            </button>
+            <button
+              type="button"
+              onClick={addAsObservation}
+              disabled={!hasText}
+              aria-label="Send and add to context"
+              title="Sends the message and saves it as an observation in the context."
+              style={{
+                width: 40, height: 40,
+                background: "var(--teal-tint)",
+                border: "1px solid var(--teal-border)",
+                borderRadius: 8,
+                color: "var(--teal)",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                cursor: hasText ? "pointer" : "not-allowed",
+                opacity: hasText ? 1 : 0.5,
+                transition: "opacity 120ms, background 120ms",
+                flexShrink: 0
+              }}>
+              {React.cloneElement(I.Plus, { width: 20, height: 20, strokeWidth: 2 })}
+            </button>
+            <button className="send-btn" onClick={submit}>{I.Send}</button>
+          </div>
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Doc tabs + panels
+  // ====================================================================
+  const DOC_TABS = [
+  { id: "visit", label: "E025" },
+  { id: "referrals", label: "E027" },
+  { id: "transcription", label: "Transcript" }];
+
+
+  function DocTabs({ tab, setTab }) {
+    return (
+      <div className="doc-pane-tabs" style={{ fontSize: "16px", gap: "2px", textAlign: "justify", padding: "0px", height: "40px", margin: "0px", borderWidth: "0px" }}>
+        {DOC_TABS.map((t) =>
+        <button
+          key={t.id}
+          className={`doc-tab${tab === t.id ? " active" : ""}`}
+          onClick={() => setTab(t.id)} style={{ opacity: "10" }}>
+          
+            {t.label}
+          </button>
+        )}
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Visit (current visit / anamnesis form) — keep full sections
+  // ====================================================================
+  const CONSULT_GROUPS = [
+  {
+    id: "anamnesis",
+    title: "Anamnesis",
+    icon: I.Notebook,
+    sections: [
+    { key: "complaints", title: "Complaints", required: true },
+    { key: "hpi", title: "History of present illness", required: true },
+    { key: "pmh", title: "Past & social history" },
+    { key: "fh", title: "Family history" }]
+
+  },
+  {
+    id: "objective",
+    title: "Objective status",
+    icon: I.Activity,
+    sections: [
+    { key: "vitals", title: "Vitals", kind: "vitals" },
+    { key: "exam", title: "Examination", required: true }]
+
+  },
+  {
+    id: "assessment",
+    title: "Assessment & plan",
+    icon: I.Clipboard,
+    sections: [
+    { key: "dx", title: "Diagnosis", required: true, kind: "dx" },
+    { key: "ddx", title: "Differential diagnosis" },
+    { key: "nonpharm", title: "Non-pharmacological treatment" },
+    { key: "pharm", title: "Pharmacological treatment", required: true },
+    { key: "recs", title: "Recommendations" },
+    { key: "diagPlan", title: "Diagnostic and consultation plan" },
+    { key: "notes", title: "Notes" }]
+
+  }];
+
+
+  function statusOf(sec, val) {
+    if (sec.kind === "dx") return val && val.code ? val.ai === "drafted" ? "drafted" : "edited" : "missing";
+    if (sec.kind === "vitals") {
+      const empty = !val || !val.value || Object.values(val.value).every((x) => !String(x).trim());
+      if (empty) return "missing";
+      return val.ai === "drafted" ? "drafted" : "edited";
+    }
+    const c = val && val.value;
+    if (!c || !String(c).trim()) return "missing";
+    return val.ai === "drafted" ? "drafted" : "edited";
+  }
+
+  function Badge({ status }) {
+    const big = { fontSize: 13, height: 24, padding: "0 10px", gap: 6, borderRadius: 999 };
+    if (status === "drafted") return <span className="badge b-ai" style={big}>{React.cloneElement(I.Sparkles, { width: 13, height: 13 })} AI drafted</span>;
+    if (status === "edited") return <span className="badge b-edit" style={big}>{React.cloneElement(I.Pencil, { width: 13, height: 13 })} Edited</span>;
+    return <span className="badge b-miss" style={big}>{React.cloneElement(I.Alert, { width: 13, height: 13 })} Missing</span>;
+  }
+
+  function AutoGrowTextarea({ value, onChange, style, ...rest }) {
+    const ref = useRef(null);
+    const resize = () => {
+      const el = ref.current;
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    };
+    useEffect(() => { resize(); }, [value]);
+    return (
+      <textarea
+        ref={ref}
+        value={value}
+        onChange={(e) => { onChange(e); resize(); }}
+        style={{ resize: "none", overflow: "hidden", ...style }}
+        {...rest} />);
+
+  }
+
+  function SectionField({ sec, val, onChange }) {
+    const status = statusOf(sec, val);
+    if (sec.kind === "vitals") {
+      const v = val && val.value || {};
+      const keys = Object.keys(v).length ? Object.keys(v) : ["BP", "HR", "SpO₂", "Temp", "Weight", "Height"];
+      return (
+        <div className="field-row" style={{ padding: "20px 0", gap: 10 }}>
+          <div className="field-header">
+            <span className="f-label" style={{ fontSize: 15, fontWeight: 500 }}>{sec.title}</span>
+            {status !== "drafted" && <Badge status={status} />}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+            {keys.map((k) =>
+            <div key={k} style={{ padding: "6px 10px", background: "#FAFAFA", border: "1px solid var(--border)", borderRadius: 8 }}>
+                <div style={{ fontSize: 12, color: "var(--muted-3)", fontWeight: 600, textTransform: "uppercase" }}>{k}</div>
+                <input
+                value={v[k] || ""}
+                onChange={(e) => onChange({ ai: "edited", value: { ...v, [k]: e.target.value } })}
+                placeholder="—"
+                style={{ width: "100%", background: "transparent", border: "none", outline: "none", fontSize: 14, fontVariantNumeric: "tabular-nums", color: "var(--ink)", marginTop: 4 }} />
+              
+              </div>
+            )}
+          </div>
+        </div>);
+
+    }
+    if (sec.kind === "dx") {
+      const v = val || { code: "", label: "", suggestions: [] };
+      return (
+        <div className="field-row" style={{ padding: "20px 0", gap: 10 }}>
+          <div className="field-header">
+            <span className="f-label" style={{ fontSize: 15, fontWeight: 500 }}>{sec.title}{sec.required && <span className="f-req">*</span>}</span>
+            {status !== "drafted" && <Badge status={status} />}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              value={v.code}
+              onChange={(e) => onChange({ ...v, code: e.target.value, ai: "edited" })}
+              placeholder="TLK-10"
+              style={{ width: 100, padding: "8px 10px", background: "#FAFAFA", border: "1px solid var(--border)", borderRadius: 8, fontSize: 14, outline: "none", fontVariantNumeric: "tabular-nums" }} />
+            
+            <input
+              value={v.label}
+              onChange={(e) => onChange({ ...v, label: e.target.value, ai: "edited" })}
+              placeholder="Search diagnosis…"
+              style={{ flex: 1, padding: "8px 10px", background: "#FAFAFA", border: "1px solid var(--border)", borderRadius: 8, fontSize: 14, outline: "none" }} />
+            
+          </div>
+          {v.suggestions && v.suggestions.length > 0 &&
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {v.suggestions.map((s) =>
+            <button
+              key={s.code}
+              onClick={() => onChange({ ...v, code: s.code, label: s.label, ai: "drafted" })}
+              className="badge"
+              style={{
+                background: v.code === s.code ? "var(--teal)" : "#fff",
+                color: v.code === s.code ? "#fff" : "var(--ink)",
+                border: `1px solid ${v.code === s.code ? "var(--teal)" : "var(--border)"}`,
+                cursor: "pointer",
+                fontSize: 13,
+                height: 28,
+                padding: "0 14px",
+                gap: 8,
+                borderRadius: 999
+              }}>
+
+                  <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{s.code}</span> {s.label}
+                </button>
+            )}
+            </div>
+          }
+        </div>);
+
+    }
+    const hideDrafted = status === "drafted";
+    return (
+      <div className="field-row" style={{ padding: "20px 0", gap: 10 }}>
+        <div className="field-header">
+          <span className="f-label" style={{ fontSize: 15, fontWeight: 500 }}>{sec.title}{sec.required && <span className="f-req">*</span>}</span>
+          {!hideDrafted && <Badge status={status} />}
+        </div>
+        <AutoGrowTextarea
+          className="f-area"
+          placeholder="Add text…"
+          value={val && val.value || ""}
+          onChange={(e) => onChange({ ai: "edited", value: e.target.value })}
+          style={{ fontSize: 15, lineHeight: 1.6 }} />
+
+      </div>);
+
+  }
+
+  function VisitTab({ data, setData, onPush, pushState }) {
+    const [openGroups, setOpenGroups] = useState({ anamnesis: true, objective: true, assessment: true });
+    const toggle = (id) => setOpenGroups((o) => ({ ...o, [id]: !o[id] }));
+    const change = (key, next) => setData((d) => ({ ...d, [key]: { ...d[key], ...next } }));
+    const regenSection = (g) => {
+      setData((d) => {
+        const next = { ...d };
+        g.sections.forEach((s) => {
+          const status = statusOf(s, d[s.key]);
+          if (status !== "edited") {
+            const orig = M.consultation[s.key];
+            next[s.key] = { ...orig, ai: "drafted" };
+          }
+        });
+        return next;
+      });
+    };
+    return (
+      <>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 20, paddingBottom: 14,
+          borderBottom: "1px solid var(--border-soft)"
+        }}>
+          <div>
+            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Consultation note</div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)", marginTop: 2 }}>E025</div>
+          </div>
+          <button
+            onClick={onPush}
+            disabled={pushState === "synced"}
+            style={{
+              height: 38, padding: "0 16px",
+              background: pushState === "synced" ? "var(--teal-tint)" : "var(--teal)",
+              border: pushState === "synced" ? "1px solid var(--teal-border)" : "none",
+              borderRadius: 8,
+              color: pushState === "synced" ? "var(--teal)" : "white",
+              fontSize: 14, fontWeight: 500,
+              display: "inline-flex", alignItems: "center", gap: 8,
+              cursor: pushState === "synced" ? "default" : "pointer"
+            }}>
+            {pushState === "synced" ? React.cloneElement(I.Check, { width: 16, height: 16, strokeWidth: 2.4 }) : React.cloneElement(I.PushArrow, { width: 16, height: 16, strokeWidth: 2 })}
+            {pushState === "synced" ? "Synced to E025" : "Push to E025"}
+          </button>
+        </div>
+        {CONSULT_GROUPS.map((g, i) => {
+          const open = openGroups[g.id];
+          const missing = g.sections.filter((s) => s.required && statusOf(s, data[s.key]) === "missing").length;
+          return (
+            <div key={g.id} className="sec-card" style={{ paddingTop: i === 0 ? 0 : 28, paddingBottom: i === CONSULT_GROUPS.length - 1 ? 0 : 8 }}>
+              <div className="sec-head" style={{ gap: 12, paddingBottom: 8 }}>
+                <div className="sec-ico" style={{ width: 36, height: 36, borderRadius: 10 }}>
+                  {React.cloneElement(g.icon, { width: 20, height: 20 })}
+                </div>
+                <span className="sec-title" style={{ fontSize: 16 }}>{g.title}</span>
+                {missing > 0 &&
+                <span className="badge b-miss" style={{ marginRight: 6, fontSize: 13, height: 24, padding: "0 10px", gap: 6, borderRadius: 999 }}>{React.cloneElement(I.Alert, { width: 13, height: 13 })} {missing} missing</span>
+                }
+                <button
+                  onClick={() => regenSection(g)}
+                  aria-label={`Regenerate ${g.title}`}
+                  title="Refresh AI-drafted fields in this section. Your edits will be preserved."
+                  style={{
+                    height: 28, padding: "0 10px",
+                    background: "var(--teal-tint)",
+                    border: "1px solid var(--teal-border)",
+                    borderRadius: 8,
+                    color: "var(--teal)",
+                    fontSize: 13, fontWeight: 500,
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    cursor: "pointer", marginLeft: "auto"
+                  }}>
+                  {React.cloneElement(I.Rotate, { width: 14, height: 14 })} Regenerate
+                </button>
+                <button className="sec-count" onClick={() => toggle(g.id)} aria-label={open ? "Collapse section" : "Expand section"} style={{ color: "var(--ink)" }}>
+                  {React.cloneElement(open ? I.ChevUp : I.ChevDown, { width: 16, height: 16 })}
+                </button>
+              </div>
+              {open &&
+              <div className="sec-body">
+                  {g.sections.map((s) =>
+                <SectionField
+                  key={s.key}
+                  sec={s}
+                  val={data[s.key]}
+                  onChange={(v) => change(s.key, v)} />
+
+                )}
+                </div>
+              }
+            </div>);
+
+        })}
+      </>);
+
+  }
+
+  // ====================================================================
+  // Patient overview
+  // ====================================================================
+  function PatientTab() {
+    const p = M.patient;
+    return (
+      <>
+        <div className="sec-card">
+          <div className="sec-head">
+            <div className="sec-ico">{I.Users}</div>
+            <span className="sec-title">Patient</span>
+          </div>
+          <div className="info-grid">
+            <div className="info-item"><div className="info-label">Gender</div><div className="info-value">{p.gender}</div></div>
+            <div className="info-item"><div className="info-label">Age</div><div className="info-value">{p.age} y.o.</div></div>
+            <div className="info-item"><div className="info-label">DOB</div><div className="info-value" style={{ fontVariantNumeric: "tabular-nums" }}>{p.dob}</div></div>
+            <div className="info-item"><div className="info-label">Phone</div><div className="info-value" style={{ fontVariantNumeric: "tabular-nums" }}>{p.phone}</div></div>
+          </div>
+          <div className="pill-row">
+            {p.allergies.map((a) =>
+            <span key={a} className="pill allergy">Allergy: {a}</span>
+            )}
+            {p.problems.map((pr) =>
+            <span key={pr.code} className="pill problem">{pr.code} · {pr.label}</span>
+            )}
+          </div>
+        </div>
+
+        <div className="sec-card">
+          <div className="sec-head">
+            <div className="sec-ico">{I.Notebook}</div>
+            <span className="sec-title">Chief complaint</span>
+          </div>
+          <div style={{ padding: "12px 14px", fontSize: 14, color: "#444", lineHeight: 1.6 }}>{p.chiefComplaint}</div>
+        </div>
+
+        <div className="sec-card">
+          <div className="sec-head">
+            <div className="sec-ico">{I.Activity}</div>
+            <span className="sec-title">Latest vitals</span>
+            <span style={{ fontSize: 12, color: "var(--muted-3)" }}>today · 10:58</span>
+          </div>
+          <div className="vitals-grid">
+            {Object.entries(p.vitals).map(([k, v]) =>
+            <div key={k} className="vital-row">
+                <span className="vital-k">{k}</span>
+                <span className="vital-v">{v}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="sec-card">
+          <div className="sec-head">
+            <div className="sec-ico">{I.Clipboard}</div>
+            <span className="sec-title">Recent visits</span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {p.recentVisits.map((v, i) =>
+            <div key={i} style={{ padding: "10px 14px", borderTop: i === 0 ? "none" : "1px solid #F8F8F8", display: "flex", alignItems: "start", gap: 10 }}>
+                <span style={{ fontSize: 12, color: "var(--muted-2)", fontVariantNumeric: "tabular-nums", width: 64, flexShrink: 0, paddingTop: 4 }}>{v.date}</span>
+                <span className="pill problem" style={{ flexShrink: 0 }}>{v.specialty}</span>
+                <p style={{ fontSize: 12, color: "#555", lineHeight: 1.55, flex: 1 }}>{v.note}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </>);
+
+  }
+
+  // ====================================================================
+  // Historical anamnesis
+  // ====================================================================
+  function AnamnesisHistoryTab() {
+    const [q, setQ] = useState("");
+    const [spec, setSpec] = useState("All");
+    const [expanded, setExpanded] = useState({});
+    const filtered = useMemo(() => {
+      return M.history.filter((e) => {
+        const t = q.toLowerCase();
+        if (q && !(e.summary.toLowerCase().includes(t) || e.icd.toLowerCase().includes(t) || e.specialty.toLowerCase().includes(t))) return false;
+        if (spec !== "All" && e.specialty !== spec) return false;
+        return true;
+      });
+    }, [q, spec]);
+
+    return (
+      <>
+        <div className="sec-card">
+          <div style={{ padding: "10px 14px", display: "flex", gap: 8, borderBottom: "1px solid var(--border-soft)" }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <span style={{ position: "absolute", top: "50%", left: 10, transform: "translateY(-50%)", color: "var(--muted-2)" }}>{I.Search}</span>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search history…"
+                style={{ width: "100%", height: 30, paddingLeft: 32, paddingRight: 10, borderRadius: 8, border: "1px solid var(--border)", background: "#FAFAFA", fontSize: 12, outline: "none" }} />
+              
+            </div>
+            <select value={spec} onChange={(e) => setSpec(e.target.value)} style={{ height: 30, padding: "0 8px", borderRadius: 8, border: "1px solid var(--border)", background: "white", fontSize: 12, color: "#444" }}>
+              <option>All</option><option>GP</option><option>Cardiology</option><option>Endocrinology</option>
+            </select>
+          </div>
+          {filtered.map((e, i) => {
+            const open = expanded[i];
+            return (
+              <div key={i} className="hist-row">
+                <div className="hist-top">
+                  <span className="hist-date">{e.date}</span>
+                  <span className="hist-spec">{e.specialty}</span>
+                  <span className="hist-icd">{e.icd}</span>
+                  <button className="hist-toggle" onClick={() => setExpanded({ ...expanded, [i]: !open })}>
+                    {open ? <>Hide {I.ChevUp}</> : <>Open {I.ChevDown}</>}
+                  </button>
+                </div>
+                <div className="hist-sum">{e.summary}</div>
+                {open &&
+                <div className="hist-body">
+                    Source: Varutis HIS · last sync 2 min ago.
+                  </div>
+                }
+              </div>);
+
+          })}
+        </div>
+      </>);
+
+  }
+
+  // ====================================================================
+  // Labs
+  // ====================================================================
+  function LabsTab() {
+    return (
+      <div className="sec-card">
+        <div className="sec-head">
+          <div className="sec-ico">{I.Flask}</div>
+          <span className="sec-title">Latest results</span>
+        </div>
+        <table className="labs-table">
+          <thead>
+            <tr>
+              <th>Test</th><th>Date</th><th>Result</th><th>Ref</th><th>Flag</th>
+            </tr>
+          </thead>
+          <tbody>
+            {M.labs.map((l, i) =>
+            <tr key={i}>
+                <td className="t">{l.test}</td>
+                <td className="muted">{l.date}</td>
+                <td className="val">{l.result}</td>
+                <td className="ref">{l.ref}</td>
+                <td>
+                  <span className={`badge ${l.flag === "High" ? "b-high" : "b-norm"}`}>
+                    {l.flag === "High" ? "High" : "Normal"}
+                  </span>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Referrals
+  // ====================================================================
+  function ReferralsTab() {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 12,
+          padding: "12px 14px",
+          background: "var(--teal-tint)",
+          border: "1px solid var(--teal-border)",
+          borderRadius: 8,
+          color: "var(--teal)",
+          fontSize: 14, lineHeight: 1.5
+        }}>
+          <span style={{ flexShrink: 0, display: "inline-flex", marginTop: 2 }}>
+            {React.cloneElement(I.Sparkles, { width: 16, height: 16, strokeWidth: 2 })}
+          </span>
+          <div style={{ color: "var(--ink)" }}>
+            <span style={{ fontWeight: 600 }}>ADA detected {M.referrals.length} referral intents during this consultation.</span> Review each before finalising — edits are preserved when you regenerate.
+          </div>
+        </div>
+        {M.referrals.map((r, i) =>
+        <div key={i} className="card" style={{ overflow: "hidden" }}>
+            <div style={{
+              padding: "14px 16px",
+              display: "flex", alignItems: "center", gap: 12,
+              borderBottom: "1px solid var(--border-soft)"
+            }}>
+              <div className="sec-ico" style={{ width: 36, height: 36, borderRadius: 10 }}>
+                {React.cloneElement(I.Clipboard, { width: 20, height: 20 })}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>Referral to {r.specialty}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>E027 · Draft · auto-generated</div>
+              </div>
+              <span style={{
+                height: 24, padding: "0 10px",
+                background: "var(--teal-tint)", border: "1px solid var(--teal-border)",
+                color: "var(--teal)", borderRadius: 999,
+                fontSize: 13, fontWeight: 500,
+                display: "inline-flex", alignItems: "center"
+              }}>{r.urgency}</span>
+            </div>
+            <div style={{ padding: "18px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>Specialty</div>
+                <div style={{ fontSize: 14, color: "var(--ink)" }}>{r.specialty}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", marginBottom: 6 }}>Reason for referral</div>
+                <div style={{ fontSize: 15, lineHeight: 1.6, color: "var(--ink)" }}>{r.reason}</div>
+              </div>
+            </div>
+            <div style={{
+              padding: "12px 16px",
+              background: "#FAFAFA",
+              borderTop: "1px solid var(--border-soft)",
+              display: "flex", gap: 8, justifyContent: "flex-end"
+            }}>
+              <button style={{
+                height: 38, padding: "0 14px",
+                background: "transparent", border: "1px solid var(--border)",
+                borderRadius: 8, color: "var(--ink)",
+                fontSize: 14, fontWeight: 500,
+                display: "inline-flex", alignItems: "center", gap: 6,
+                cursor: "pointer"
+              }}>{React.cloneElement(I.X, { width: 14, height: 14 })} Dismiss</button>
+              <button style={{
+                height: 38, padding: "0 14px",
+                background: "var(--teal-tint)", border: "1px solid var(--teal-border)",
+                borderRadius: 8, color: "var(--teal)",
+                fontSize: 14, fontWeight: 500,
+                display: "inline-flex", alignItems: "center", gap: 6,
+                cursor: "pointer"
+              }}>{React.cloneElement(I.Pencil, { width: 14, height: 14 })} Edit</button>
+              <button style={{
+                height: 38, padding: "0 16px",
+                background: "var(--teal)", border: "none",
+                borderRadius: 8, color: "white",
+                fontSize: 14, fontWeight: 500,
+                display: "inline-flex", alignItems: "center", gap: 6,
+                cursor: "pointer"
+              }}>{React.cloneElement(I.Check, { width: 14, height: 14, strokeWidth: 2.4 })} Confirm</button>
+            </div>
+          </div>
+        )}
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Transcription — 3 recordings, expandable
+  // ====================================================================
+  function Waveform({ progress, durationSec }) {
+    const bars = 30;
+    const heights = useMemo(() => {
+      const arr = [];
+      let seed = durationSec * 9301 + 49297;
+      for (let i = 0; i < bars; i++) {
+        seed = (seed * 9301 + 49297) % 233280;
+        const r = seed / 233280;
+        const env = 0.4 + 0.6 * Math.sin(i / bars * Math.PI);
+        arr.push(0.25 + r * 0.75 * env);
+      }
+      return arr;
+    }, [durationSec]);
+    return (
+      <div className="wave">
+        {heights.map((h, i) =>
+        <span
+          key={i}
+          className={i / bars < progress ? "played" : ""}
+          style={{ height: `${Math.round(h * 100)}%` }} />
+
+        )}
+      </div>);
+
+  }
+
+  function EditableTranscriptLine({ value, onChange }) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(value);
+    const ref = useRef(null);
+    useEffect(() => { if (editing && ref.current) { ref.current.focus(); ref.current.select(); } }, [editing]);
+    useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+    const commit = () => { setEditing(false); if (draft !== value) onChange(draft); };
+    const cancel = () => { setDraft(value); setEditing(false); };
+    if (!editing) {
+      return (
+        <span
+          className="txt"
+          onClick={() => setEditing(true)}
+          title="Click to edit"
+          style={{ cursor: "text", borderRadius: 4, padding: "2px 4px", margin: "-2px -4px", transition: "background 120ms" }}
+          onMouseEnter={(e) => e.currentTarget.style.background = "var(--border-soft)"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+          {value}
+        </span>);
+
+    }
+    return (
+      <textarea
+        ref={ref}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commit(); }
+          if (e.key === "Escape") { e.preventDefault(); cancel(); }
+        }}
+        rows={Math.max(1, draft.split("\n").length)}
+        style={{
+          fontFamily: "inherit", fontSize: "inherit", lineHeight: "inherit", color: "var(--ink)",
+          width: "100%", background: "white",
+          border: "1px solid var(--teal)", borderRadius: 6,
+          padding: "4px 6px", margin: "-4px -6px",
+          resize: "none", outline: "none"
+        }} />);
+
+
+  }
+
+  function RecordingCard({ rec, expanded, onToggle }) {
+    const [playing, setPlaying] = useState(false);
+    const [elapsed, setElapsed] = useState(0);
+    const [edits, setEdits] = useState({});
+    useEffect(() => {
+      if (!playing) return;
+      const id = setInterval(() => {
+        setElapsed((s) => {
+          if (s >= rec.durationSec) {setPlaying(false);return rec.durationSec;}
+          return s + 1;
+        });
+      }, 1000);
+      return () => clearInterval(id);
+    }, [playing, rec.durationSec]);
+    const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    const progress = elapsed / rec.durationSec;
+
+    return (
+      <div className="rec-card">
+        <div className="rec-row">
+          <button className="rec-play" onClick={() => setPlaying((p) => !p)}>
+            {playing ? I.Pause : I.Play}
+          </button>
+          <div className="rec-info" style={{ flex: "0 0 160px" }}>
+            <div className="rec-title">{rec.title}</div>
+            <div className="rec-meta" style={{ color: "var(--muted)" }}>{rec.date}</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+            <Waveform progress={progress} durationSec={rec.durationSec} />
+          </div>
+          <div className="rec-time" style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)" }}>{fmt(elapsed)} / {fmt(rec.durationSec)}</div>
+          <button className="rec-toggle" onClick={onToggle} style={{ color: "var(--ink)" }} aria-label={expanded ? "Collapse" : "Expand"}>
+            {React.cloneElement(expanded ? I.ChevUp : I.ChevDown, { width: 16, height: 16 })}
+          </button>
+        </div>
+        {expanded &&
+        <div className="rec-body">
+            {rec.lines.map((l, i) => {
+            const current = i in edits ? edits[i] : l.text;
+            return (
+              <div key={i} className="rec-line" style={{ gridTemplateColumns: "50px 90px 1fr", gap: 8, padding: "4px 0", fontSize: 14, lineHeight: 1.6 }}>
+                  <span className="ts" style={{ fontSize: 13, color: "var(--muted)" }}>{l.t}</span>
+                  <span className={`who ${l.who === "Doctor" ? "doctor" : "patient"}`} style={{ fontSize: 13 }}>
+                    {l.who === "Doctor" ? "Doctor" : "Patient"}
+                  </span>
+                  <EditableTranscriptLine value={current} onChange={(v) => setEdits((e) => ({ ...e, [i]: v }))} />
+                </div>);
+
+          })}
+          </div>
+        }
+      </div>);
+
+  }
+
+  function LiveRecordingCard({ seconds, lines, onStop }) {
+    const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    return (
+      <div className="rec-card" style={{ borderColor: "#FECACA" }}>
+        <div className="rec-row">
+          <div style={{
+            width: 36, height: 36, borderRadius: 8,
+            background: "#FEF2F2", border: "1px solid #FECACA",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0
+          }}>
+            <span className="rec-dot" />
+          </div>
+          <div className="rec-info" style={{ flex: "0 0 160px" }}>
+            <div className="rec-title" style={{ color: "var(--ink)" }}>Recording…</div>
+            <div className="rec-meta" style={{ color: "var(--muted)" }}>Live · Apr 17</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--muted)" }}>
+            {lines.length === 0 ? "Listening for speech…" : ""}
+          </div>
+          <div className="rec-time" style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{fmt(seconds)}</div>
+        </div>
+        <div className="rec-body">
+          {lines.length === 0 ?
+          <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--muted)", textAlign: "center" }}>
+              Transcript lines will appear here as the conversation continues.
+            </div> :
+
+          lines.map((l, i) =>
+          <div key={i} className="rec-line" style={{ gridTemplateColumns: "50px 90px 1fr", gap: 8, padding: "4px 0", fontSize: 14, lineHeight: 1.6 }}>
+                <span className="ts" style={{ fontSize: 13, color: "var(--muted)" }}>{l.t}</span>
+                <span className={`who ${l.who === "Doctor" ? "doctor" : "patient"}`} style={{ fontSize: 13 }}>
+                  {l.who === "Doctor" ? "Doctor" : "Patient"}
+                </span>
+                <span className="txt">{l.text}</span>
+              </div>
+          )}
+        </div>
+      </div>);
+
+  }
+
+  function TranscriptionTab({ scribing, seconds, liveLines, onStop }) {
+    const [expanded, setExpanded] = useState(new Set());
+    const toggle = (id) => {
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);else next.add(id);
+        return next;
+      });
+    };
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {scribing && <LiveRecordingCard seconds={seconds} lines={liveLines} onStop={onStop} />}
+        {(M.recordings || []).map((r) =>
+        <RecordingCard key={r.id} rec={r} expanded={expanded.has(r.id)} onToggle={() => toggle(r.id)} />
+        )}
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Call Modal
+  // ====================================================================
+  function CallModal({ patient, onClose, onConnected }) {
+    const [phase, setPhase] = useState("calling");
+    const [elapsed, setElapsed] = useState(0);
+    useEffect(() => {
+      const t1 = setTimeout(() => setPhase("ringing"), 900);
+      const t2 = setTimeout(() => setPhase("connected"), 3200);
+      return () => {clearTimeout(t1);clearTimeout(t2);};
+    }, []);
+    useEffect(() => {
+      if (phase === "connected" && onConnected) {
+        const t = setTimeout(onConnected, 600);
+        return () => clearTimeout(t);
+      }
+    }, [phase, onConnected]);
+    useEffect(() => {
+      if (phase !== "connected") return;
+      const id = setInterval(() => setElapsed((s) => s + 1), 1000);
+      return () => clearInterval(id);
+    }, [phase]);
+    const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    const label = phase === "calling" ? "Calling" : phase === "ringing" ? "Ringing" : "Connected";
+    return (
+      <div className="modal-back" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="call-head">
+            <div className="call-av">
+              {phase !== "connected" && <span className="pulse" />}
+              {patient.initials}
+            </div>
+            <div className="call-name">{patient.name}</div>
+            <div className="call-phone">{patient.phone}</div>
+            <div className={`call-status${phase === "connected" ? " connected" : ""}`}>
+              <span className="dot" />
+              {label}
+              {phase === "connected" && <span style={{ fontVariantNumeric: "tabular-nums", textTransform: "none", letterSpacing: 0 }}> · {fmt(elapsed)}</span>}
+            </div>
+          </div>
+          <div className="call-actions">
+            <button className="end-call" onClick={onClose}>{I.PhoneEnd}</button>
+          </div>
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Push to E025 modal
+  // ====================================================================
+  function PushModal({ missing, onClose, onConfirm }) {
+    const hasMissing = missing && missing.length > 0;
+    return (
+      <div className="modal-back" onClick={onClose}>
+        <div className="modal" style={{ width: 440 }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ padding: "20px 24px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 999,
+                background: hasMissing ? "#FEF2F2" : "var(--teal-tint)",
+                color: hasMissing ? "#B91C1C" : "var(--teal)",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                {hasMissing ? I.AlertLg : I.PushArrow}
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700 }}>
+                  {hasMissing ? "Missing required sections" : "Push this record to E025?"}
+                </h3>
+                <p style={{ fontSize: 14, color: "#555", marginTop: 8, lineHeight: 1.55 }}>
+                  {hasMissing ?
+                  "Complete the required sections below before pushing to E025." :
+                  "This record will be finalised and written to the patient's E025 in Varutis HIS."}
+                </p>
+                {hasMissing &&
+                <ul style={{ marginTop: 10, listStyle: "none", padding: 0 }}>
+                    {missing.map((m) =>
+                  <li key={m.key} style={{ padding: "8px 12px", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 8, fontSize: 14, color: "#991B1B", marginBottom: 4, fontWeight: 500 }}>
+                        {m.title}
+                      </li>
+                  )}
+                  </ul>
+                }
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: "16px 24px", background: "#FAFAFA", borderTop: "1px solid var(--border-soft)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button className="ref-btn" onClick={onClose} style={{ height: 36, padding: "0 16px", fontSize: 14, fontWeight: 500 }}>{hasMissing ? "Go back" : "Cancel"}</button>
+            {!hasMissing &&
+            <button className="push-btn" onClick={onConfirm} style={{ height: 36, padding: "0 16px", fontSize: 14, fontWeight: 500, background: "var(--teal)", color: "white", border: "none", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>{I.Check} Confirm push</button>
+            }
+          </div>
+        </div>
+      </div>);
+
+  }
+
+  // ====================================================================
+  // Toast
+  // ====================================================================
+  function Toast({ msg }) {
+    if (!msg) return null;
+    return (
+      <div style={{
+        position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+        background: "var(--ink)", color: "white",
+        padding: "10px 14px", borderRadius: 8,
+        fontSize: 14, fontWeight: 500,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.25)", zIndex: 60
+      }}>{msg}</div>);
+
+  }
+
+  // ====================================================================
+  // App
+  // ====================================================================
+  function App() {
+    const [tab, setTab] = useState("visit");
+    const [scribing, setScribing] = useState(false);
+    const [scribeMode, setScribeMode] = useState(null);
+    const [scribingLang, setScribingLang] = useState("Lithuanian");
+    const [uiLang, setUiLang] = useState("English");
+    const [seconds, setSeconds] = useState(0);
+    const [callOpen, setCallOpen] = useState(false);
+    const [pushOpen, setPushOpen] = useState(false);
+    const [pushState, setPushState] = useState("draft");
+    const [data, setData] = useState(M.consultation);
+    const [messages, setMessages] = useState([
+    { role: "assistant", content: "Patient checked in. I've pulled the last 4 visits and recent labs. Her HbA1c is trending up (7.1%). How can I help with today's consultation?" }]
+    );
+    const [sources, setSources] = useState([
+    { id: "tr-active", type: "transcript", label: "Today's visit transcript", sub: "Apr 17 · 12 min recorded", selected: true },
+    { id: "obs-1", type: "observation", label: "BP felt high on palpation", sub: "Added 4 min ago", selected: true },
+    { id: "obs-2", type: "observation", label: "Wrist tender on volar side", sub: "Added 2 min ago", selected: true }]
+    );
+    const toggleSource = useCallback((id) => {
+      setSources((arr) => arr.map((s) => s.id === id ? { ...s, selected: !s.selected } : s));
+    }, []);
+    const obsCounter = useRef(3);
+    const addObservation = useCallback((text) => {
+      const id = `obs-${++obsCounter.current}`;
+      setSources((arr) => [...arr, { id, type: "observation", label: text, sub: "Just now", selected: true }]);
+    }, []);
+    const [draftSnapshot, setDraftSnapshot] = useState(() => ["tr-active", "obs-1", "obs-2"]);
+    const selectedIdsKey = sources.filter((s) => s.selected).map((s) => s.id).sort().join(",");
+    const snapshotKey = [...draftSnapshot].sort().join(",");
+    const isStale = selectedIdsKey !== snapshotKey;
+    const { draftedCount, editedCount } = useMemo(() => {
+      let d = 0, e = 0;
+      CONSULT_GROUPS.forEach((g) => g.sections.forEach((s) => {
+        const st = statusOf(s, data[s.key]);
+        if (st === "drafted") d++;else if (st === "edited") e++;
+      }));
+      return { draftedCount: d, editedCount: e };
+    }, [data]);
+    const regenerate = useCallback(() => {
+      setDraftSnapshot(sources.filter((s) => s.selected).map((s) => s.id));
+      showToast("Draft refreshed with current context");
+    }, [sources]);
+    const [toast, setToast] = useState(null);
+    const toastTimer = useRef(null);
+
+    const [isOnline, setIsOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+    useEffect(() => {
+      const onUp = () => setIsOnline(true);
+      const onDown = () => setIsOnline(false);
+      window.addEventListener("online", onUp);
+      window.addEventListener("offline", onDown);
+      return () => {
+        window.removeEventListener("online", onUp);
+        window.removeEventListener("offline", onDown);
+      };
+    }, []);
+
+    useEffect(() => {
+      if (!scribing) return;
+      const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+      return () => clearInterval(id);
+    }, [scribing]);
+
+    useEffect(() => {
+      if (scribing) setTab("transcription");
+    }, [scribing]);
+
+    const toggleScribe = useCallback(() => {
+      setScribing((s) => {
+        if (s) { setScribeMode(null); return false; }
+        setSeconds(0);
+        setScribeMode((m) => m || "in-person");
+        return true;
+      });
+    }, []);
+    const endCall = useCallback(() => {
+      setScribing(false);
+      setScribeMode(null);
+    }, []);
+
+    const STREAM_SCRIPT = useMemo(() => [
+    { at: 3, t: "00:03", who: "Doctor", text: "Sveiki, papasakokite, dėl ko atvykote." },
+    { at: 8, t: "00:08", who: "Patient", text: "Jaučiu tirpimą dešiniojo nykščio dalyje jau apie dvi savaites." },
+    { at: 16, t: "00:16", who: "Doctor", text: "Ar tirpimas pastovus, ar atsiranda tik judant?" }],
+    []);
+    const liveLines = scribing ? STREAM_SCRIPT.filter((l) => l.at <= seconds).map(({ at, ...rest }) => rest) : [];
+
+    const showToast = useCallback((m) => {
+      setToast(m);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(null), 2000);
+    }, []);
+
+    const sendUser = useCallback((text) => {
+      setMessages((m) => [...m, { role: "user", content: text }]);
+      setTimeout(() => {
+        setMessages((m) => [
+        ...m,
+        { role: "assistant", content: `Looking into "${text}" — based on today's scribe and her history, I'd prioritise the wrist workup and a 3-month HbA1c recheck. Want me to draft the E025?` }]
+        );
+      }, 700);
+    }, []);
+
+    const runAction = useCallback((label) => {
+      const map = {
+        "Draft E025": { tab: "visit", reply: "Drafted the E025 from the scribing session — see the E025 tab. AI-populated sections are marked." },
+        "Generate Referral (E027)": { tab: "referrals", reply: "Generated two E027 referral drafts (Cardiology, Neurology). Review them in the E027 tab." },
+        "Draft Prescription": { tab: "visit", reply: "Drafted prescription: NSAID 200mg × 7 days, wrist splint." },
+        "Order Tests": { tab: "labs", reply: "Ordered: HbA1c (follow-up in 3 mo), Lipid panel, TSH. See Labs." }
+      };
+      const a = map[label] || { tab: "visit", reply: "Done." };
+      setMessages((m) => [...m, { role: "user", content: label }, { role: "assistant", content: a.reply }]);
+      setTab(a.tab);
+      setDraftSnapshot(sources.filter((s) => s.selected).map((s) => s.id));
+    }, [sources]);
+
+    const handlePush = () => {
+      const miss = [];
+      CONSULT_GROUPS.forEach((g) => g.sections.forEach((s) => {
+        if (s.required && statusOf(s, data[s.key]) === "missing") miss.push(s);
+      }));
+      if (miss.length > 0) {
+        setPushOpen({ missing: miss });
+      } else {
+        setPushOpen({ missing: [] });
+      }
+    };
+    const confirmPush = () => {
+      setPushOpen(false);
+      setPushState("synced");
+      showToast("Record pushed to E025");
+    };
+
+    let panel = null;
+    if (tab === "visit") panel = (
+      <>
+        {isStale &&
+        <div style={{
+          display: "flex", alignItems: "flex-start", gap: 12,
+          padding: "12px 14px", marginBottom: 16,
+          background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 8,
+          color: "#92400E"
+        }}>
+            <div style={{ flexShrink: 0, color: "#92400E", display: "inline-flex", marginTop: 2 }}>
+              {React.cloneElement(I.Alert, { width: 18, height: 18, strokeWidth: 2 })}
+            </div>
+            <div style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>Sources changed since this draft</div>
+              <div>Regenerate will refresh {draftedCount} AI-drafted {draftedCount === 1 ? "field" : "fields"}{editedCount > 0 ? ` · your ${editedCount} ${editedCount === 1 ? "edit" : "edits"} will be preserved` : ""}.</div>
+            </div>
+            <button
+            onClick={regenerate}
+            style={{
+              flexShrink: 0, height: 32, padding: "0 12px",
+              background: "#92400E", color: "white",
+              border: "none", borderRadius: 8,
+              fontSize: 13, fontWeight: 500,
+              cursor: "pointer"
+            }}>
+              Regenerate
+            </button>
+          </div>
+        }
+        <VisitTab data={data} setData={setData} onPush={handlePush} pushState={pushState} />
+      </>);else
+
+    if (tab === "patient") panel = <PatientTab />;else
+    if (tab === "anamnesis") panel = <AnamnesisHistoryTab />;else
+    if (tab === "labs") panel = <LabsTab />;else
+    if (tab === "referrals") panel = <ReferralsTab />;else
+    if (tab === "transcription") panel = <TranscriptionTab scribing={scribing} seconds={seconds} liveLines={liveLines} onStop={toggleScribe} />;
+
+    return (
+      <div className="app">
+        <TopNav
+          scribingLang={scribingLang}
+          setScribingLang={setScribingLang}
+          uiLang={uiLang}
+          setUiLang={setUiLang} />
+
+        {scribing && !isOnline &&
+        <div style={{
+          padding: "10px 24px",
+          background: "#FFFBEB",
+          borderBottom: "1px solid #FDE68A",
+          color: "#92400E",
+          fontSize: 13,
+          lineHeight: 1.4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          flexShrink: 0
+        }}>
+            {React.cloneElement(I.WifiOff, { width: 16, height: 16 })}
+            <span><strong>You're offline — recording continues locally.</strong> Audio is being captured on this device; your transcript will sync as soon as you're back online.</span>
+          </div>
+        }
+
+        <div className="body" style={{ gridTemplateColumns: "1fr 1fr 280px" }}>
+          <div className="col">
+            <ChatCard
+              messages={messages}
+              onSend={sendUser}
+              onAction={runAction}
+              scribing={scribing}
+              scribeSeconds={seconds}
+              onToggleScribe={toggleScribe}
+              sources={sources}
+              onToggleSource={toggleSource}
+              onAddObservation={(t) => { addObservation(t); showToast("Added to context"); }} />
+
+          </div>
+          <div className="col">
+            <PatientHeader />
+            <div className="doc-pane">
+              <DocTabs tab={tab} setTab={setTab} />
+              <div className="doc-pane-body" style={{ borderRadius: "0px 14px 14px", padding: "18px" }}>
+                {panel}
+              </div>
+            </div>
+          </div>
+          <div className="col">
+            <ContextPanel sources={sources} onToggle={toggleSource} />
+          </div>
+        </div>
+        {callOpen && <CallModal patient={M.patient} onClose={() => setCallOpen(false)} onConnected={() => { setCallOpen(false); setScribeMode("call"); if (!scribing) { setSeconds(0); setScribing(true); } }} />}
+        {pushOpen && <PushModal missing={pushOpen.missing} onClose={() => setPushOpen(false)} onConfirm={confirmPush} />}
+        <Toast msg={toast} />
+      </div>);
+
+  }
+
+  window.ADAApp = App;
+})();
+  </script>
+
+  <!-- Mount -->
+  <script type="text/babel" data-presets="react">
+    function tryMount() {
+      if (!window.ADAApp || !window.ADA_MOCK) return setTimeout(tryMount, 30);
+      ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(window.ADAApp));
+    }
+    tryMount();
+  </script>
+</body>
+</html>

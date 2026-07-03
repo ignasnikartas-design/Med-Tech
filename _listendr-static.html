@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="ee8901c7-79a4-4f23-9645-4d1043660122"></script>
+<script src="cf1d0513-f0ae-40e7-a55a-655d83425e57"></script>
+<script src="51e3e8fc-4de6-4108-98d5-371a3ab15968"></script>
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+@font-face { font-family:'Figtree'; font-style:normal; font-weight:400; font-display:swap; src:url("fb0fed81-6676-4096-95d5-ca5cb1f8e8ed") format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family:'Figtree'; font-style:normal; font-weight:500; font-display:swap; src:url("fb0fed81-6676-4096-95d5-ca5cb1f8e8ed") format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family:'Figtree'; font-style:normal; font-weight:600; font-display:swap; src:url("fb0fed81-6676-4096-95d5-ca5cb1f8e8ed") format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family:'Figtree'; font-style:normal; font-weight:700; font-display:swap; src:url("fb0fed81-6676-4096-95d5-ca5cb1f8e8ed") format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+@font-face { font-family:'Figtree'; font-style:normal; font-weight:800; font-display:swap; src:url("fb0fed81-6676-4096-95d5-ca5cb1f8e8ed") format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+html,body{margin:0;padding:0;}
+*{box-sizing:border-box;}
+input{font-family:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:rgba(100,116,116,.22);border-radius:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes recBlink{0%,100%{opacity:1}50%{opacity:.35}}
+</style>
+</helmet>
+<div style="width:100vw;height:100vh;display:flex;flex-direction:column;background:#FBFDFD;font-family:'Figtree',system-ui,sans-serif;color:#1B2A2A;-webkit-font-smoothing:antialiased;overflow:hidden;">
+
+  <!-- ══ TOP NAV ══ -->
+  <div style="height:64px;flex-shrink:0;background:#fff;border-bottom:1px solid #E2EAEA;display:flex;align-items:center;padding:0 20px;gap:16px;">
+    <div style="display:flex;align-items:center;gap:11px;">
+      <div style="width:44px;height:44px;border-radius:12px;background:#0C3B3F;display:flex;align-items:center;justify-content:center;color:#4FD3DE;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"></path></svg>
+      </div>
+      <div style="line-height:1;">
+        <div style="font-size:19px;font-weight:800;letter-spacing:-.02em;color:#16302F;">ListenDr</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:.14em;color:#0C7A83;margin-top:3px;">LISTEN DOCTOR</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button style="height:40px;padding:0 14px;background:#fff;border:1px solid #DCE6E6;border-radius:11px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:#37504F;cursor:pointer;" style-hover="background:#F5F8F8;">
+        Sesija be pavadinimo
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A9A9C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+      </button>
+      <button style="width:40px;height:40px;background:#fff;border:1px solid #DCE6E6;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#37504F;cursor:pointer;" style-hover="background:#F5F8F8;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+      </button>
+    </div>
+    <div style="flex:1;"></div>
+    <button style="background:none;border:none;padding:0;position:relative;display:inline-flex;cursor:pointer;">
+      <div style="width:42px;height:42px;border-radius:50%;background:#0C7A83;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:600;">A</div>
+      <div style="position:absolute;right:-2px;bottom:-2px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid #E2EAEA;display:flex;align-items:center;justify-content:center;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#37504F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+    </button>
+  </div>
+
+  <!-- ══ BODY ══ -->
+  <div style="flex:1;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.28fr) 320px;gap:16px;padding:16px;">
+
+    <!-- ═ LEFT: SCRIBE ═ -->
+    <div style="min-width:0;background:#fff;border:1px solid #E2EAEA;border-radius:18px;display:flex;flex-direction:column;padding:16px;overflow:hidden;">
+      <!-- scribe widget -->
+      <div style="border:1px solid {{ scribeBorder }};background:{{ scribeBg }};border-radius:14px;padding:12px 12px 12px 16px;display:flex;align-items:center;gap:12px;transition:background .2s,border-color .2s;">
+        <div style="color:{{ scribeAccent }};display:flex;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:500;color:#2B4241;">{{ scribeLabel }}</div>
+          <sc-if value="{{ rec }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#DC2626;animation:recBlink 1.4s ease-in-out infinite;"></span>
+            <span style="font-size:12px;color:#DC2626;font-weight:500;font-variant-numeric:tabular-nums;">{{ elapsedFmt }}</span>
+          </div>
+          </sc-if>
+        </div>
+        <button onclick="{{ toggleRec }}" style="height:38px;padding:0 20px;background:{{ recBtnBg }};border:1.5px solid {{ recBtnBorder }};border-radius:10px;color:{{ recBtnColor }};font-size:14px;font-weight:600;cursor:pointer;">{{ recBtnLabel }}</button>
+      </div>
+
+      <!-- Doctor Notes -->
+      <div style="flex:1;margin-top:16px;display:flex;flex-direction:column;min-height:0;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;min-height:18px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#9AA7A7;">GYDYTOJO PASTABOS</span>
+          <div style="flex:1;"></div>
+          <sc-if value="{{ stIdle }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12px;color:#9AA7A7;display:inline-flex;align-items:center;gap:5px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+              Automatinis išsaugojimas
+            </span>
+          </sc-if>
+          <sc-if value="{{ stTyping }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12px;color:#9AA7A7;">Rašoma…</span>
+          </sc-if>
+          <sc-if value="{{ stSaving }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12px;color:#9AA7A7;display:inline-flex;align-items:center;gap:6px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="animation:spin .7s linear infinite;"><path d="M21 12a9 9 0 1 1-6.2-8.5"></path></svg>
+              Išsaugoma…
+            </span>
+          </sc-if>
+          <sc-if value="{{ stSaved }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12px;color:#0C7A83;font-weight:600;display:inline-flex;align-items:center;gap:5px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+              Išsaugota · AI atnaujinta
+            </span>
+          </sc-if>
+        </div>
+        <div style="flex:1;min-height:0;position:relative;display:flex;">
+          <textarea value="{{ note }}" onchange="{{ onNoteInput }}" placeholder="Rašykite stebėjimus, fizinės apžiūros duomenis, informaciją, kurios nepagauna kalba…" style="flex:1;min-height:0;width:100%;resize:none;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:14px;color:#28403F;outline:none;line-height:1.6;font-family:inherit;"></textarea>
+          <sc-if value="{{ notesLocked }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;border-radius:12px;background:rgba(247,250,250,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:0 24px;">
+            <div style="width:40px;height:40px;border-radius:11px;background:#EEF4F4;display:flex;align-items:center;justify-content:center;color:#9AA7A7;">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+            </div>
+            <div style="font-size:13px;color:#7C8B8B;max-width:230px;line-height:1.5;">Pradėkite įrašymą, kad galėtumėte rašyti pastabas</div>
+          </div>
+          </sc-if>
+        </div>
+        <div style="font-size:11px;color:#9AA7A7;margin-top:8px;line-height:1.5;">Pastabos automatiškai išsaugomos ir naudojamos kaip konsultacijos kontekstas.</div>
+      </div>
+
+      <!-- AI actions -->
+      <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:8px;flex-shrink:0;">
+        <button style="height:38px;padding:0 15px;background:#0C7A83;border:none;border-radius:10px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;" style-hover="background:#0A6971;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+          Rengti E025
+        </button>
+        <button style="height:38px;padding:0 14px;background:#fff;border:1px solid #DCE6E6;border-radius:10px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#37504F;cursor:pointer;" style-hover="background:#F5F8F8;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8B8B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H5.2L4 18z"></path><path d="M8 9h8M8 12h5"></path></svg>
+          Siuntimas
+        </button>
+        <button style="height:38px;padding:0 14px;background:#fff;border:1px solid #DCE6E6;border-radius:10px;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:#37504F;cursor:pointer;" style-hover="background:#F5F8F8;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8B8B" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 3 13a5 5 0 0 1 7-7l1 1 1-1a5 5 0 0 1 7 7l-7.5 7.5a1.4 1.4 0 0 1-2 0z"></path></svg>
+          Receptas
+        </button>
+      </div>
+    </div>
+
+    <!-- ═ MIDDLE: NOTE EDITOR ═ -->
+    <div style="min-width:0;display:flex;flex-direction:column;overflow:hidden;">
+      <!-- patient header -->
+      <div style="flex-shrink:0;background:#fff;border:1px solid #C7E0E1;border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+        <div style="width:46px;height:46px;border-radius:12px;background:#F1F5F5;border:1px solid #E2EAEA;display:flex;align-items:center;justify-content:center;color:#9AA7A7;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg>
+        </div>
+        <div style="min-width:0;">
+          <div style="font-size:18px;font-weight:600;color:#9AA7A7;">Pridėti paciento vardą</div>
+          <div style="font-size:13px;color:#9AA7A7;margin-top:4px;font-variant-numeric:tabular-nums;">Vizitas · 2026-07-01 12:52</div>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div style="flex-shrink:0;display:flex;gap:6px;border-bottom:1px solid #E2EAEA;padding:0 4px;">
+        <button onclick="{{ setE025 }}" style="height:44px;padding:0 20px;background:none;border:none;border-bottom:2.5px solid {{ e025Border }};color:{{ e025Color }};font-size:15px;font-weight:600;cursor:pointer;margin-bottom:-1px;">E025</button>
+        <button onclick="{{ setTrans }}" style="height:44px;padding:0 20px;background:none;border:none;border-bottom:2.5px solid {{ transBorder }};color:{{ transColor }};font-size:15px;font-weight:600;cursor:pointer;margin-bottom:-1px;">Transkripcija</button>
+      </div>
+
+      <!-- scroll area -->
+      <div style="flex:1;overflow-y:auto;padding:22px 4px 40px;">
+
+        <sc-if value="{{ isE025 }}" hint-placeholder-val="{{ true }}">
+        <div>
+          <!-- toolbar -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:22px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#9AA7A7;">KONSULTACIJOS APRAŠYMAS</div>
+              <div style="font-size:22px;font-weight:700;color:#16302F;margin-top:3px;">E025</div>
+            </div>
+            <button style="height:40px;padding:0 16px;background:#fff;border:1px solid #DCE6E6;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#37504F;cursor:pointer;" style-hover="background:#F5F8F8;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#7C8B8B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M7 12h10M10 18h4"></path></svg>
+              Laukai
+            </button>
+            <button style="height:40px;padding:0 16px;background:#EAF5F5;border:1px solid #BCDCDE;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#0C7A83;cursor:pointer;" style-hover="background:#DCF0F0;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+              Užpildyti
+            </button>
+            <button style="height:40px;padding:0 18px;background:#0C7A83;border:none;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#fff;cursor:pointer;" style-hover="background:#0A6971;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+              Siųsti
+            </button>
+          </div>
+
+          <div style="border-top:1px solid #EDF2F2;"></div>
+
+          <!-- Anamnezė -->
+          <div style="padding:22px 0;border-bottom:1px solid #EDF2F2;">
+            <button onclick="{{ toggleA }}" style="width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:40px;height:40px;border-radius:11px;background:#EEF4F4;display:flex;align-items:center;justify-content:center;color:#0C7A83;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path><path d="M12 7v5l3 3"></path></svg>
+              </div>
+              <div style="flex:1;text-align:left;font-size:18px;font-weight:700;color:#16302F;">Anamnezė</div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:{{ caretA }};transition:transform .18s;"><path d="M6 15l6-6 6 6"></path></svg>
+            </button>
+            <sc-if value="{{ openA }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:18px;">
+              <div style="font-size:15px;font-weight:500;color:#2B4241;margin-bottom:12px;">Nusiskundimai ir anamnezė</div>
+              <textarea placeholder="" style="width:100%;min-height:120px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:14px;color:#28403F;resize:vertical;outline:none;line-height:1.6;font-family:inherit;"></textarea>
+            </div>
+            </sc-if>
+          </div>
+
+          <!-- Kraujospūdis ir kvėpavimas -->
+          <div style="padding:22px 0;border-bottom:1px solid #EDF2F2;">
+            <button onclick="{{ toggleV }}" style="width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:40px;height:40px;border-radius:11px;background:#EEF4F4;display:flex;align-items:center;justify-content:center;color:#0C7A83;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"></path></svg>
+              </div>
+              <div style="flex:1;text-align:left;font-size:18px;font-weight:700;color:#16302F;">Kraujospūdis ir kvėpavimas</div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:{{ caretV }};transition:transform .18s;"><path d="M6 15l6-6 6 6"></path></svg>
+            </button>
+            <sc-if value="{{ openV }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+              <input placeholder="AKS-S, MMHG" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="AKS-D, MMHG" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="PULSAS, K./MIN" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="KVĖPAV., K./MIN" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="SATURACIJA, %" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="PROMILĖS" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="TEMP., °C" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+            </div>
+            </sc-if>
+          </div>
+
+          <!-- Antropometriniai duomenys -->
+          <div style="padding:22px 0;">
+            <button onclick="{{ toggleAn }}" style="width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:40px;height:40px;border-radius:11px;background:#EEF4F4;display:flex;align-items:center;justify-content:center;color:#0C7A83;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"></path><path d="M14.5 12.5l-2 2M11.5 9.5l-2 2M8.5 6.5l-2 2M17.5 15.5l-2 2"></path></svg>
+              </div>
+              <div style="flex:1;text-align:left;font-size:18px;font-weight:700;color:#16302F;">Antropometriniai duomenys</div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:{{ caretAn }};transition:transform .18s;"><path d="M6 15l6-6 6 6"></path></svg>
+            </button>
+            <sc-if value="{{ openAn }}" hint-placeholder-val="{{ true }}">
+            <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
+              <input placeholder="ŪGIS, CM" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="SVORIS, KG" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+              <input placeholder="KMI" style="height:64px;padding:14px 16px;background:#F7FAFA;border:1px solid #E2EAEA;border-radius:12px;font-size:13px;color:#28403F;outline:none;">
+            </div>
+            </sc-if>
+          </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ isTrans }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px;text-align:center;color:#9AA7A7;">
+          <div style="width:56px;height:56px;border-radius:14px;background:#EEF4F4;display:flex;align-items:center;justify-content:center;color:#0C7A83;margin-bottom:16px;">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg>
+          </div>
+          <div style="font-size:15px;font-weight:500;color:#4E6362;">Transkripcija dar nepradėta</div>
+          <div style="font-size:13px;margin-top:6px;">Paspauskite „Pradėti", kad įrašytumėte pokalbį.</div>
+        </div>
+        </sc-if>
+
+      </div>
+    </div>
+
+    <!-- ═ RIGHT: CONTEXT ═ -->
+    <div style="min-width:0;display:flex;flex-direction:column;overflow:hidden;padding-left:4px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#9AA7A7;">KONTEKSTAS</div>
+      <div style="font-size:14px;font-weight:600;color:#37504F;margin-top:8px;">1 iš 1 maitina generavimo veiksmus</div>
+
+      <div style="margin-top:16px;background:#fff;border:1px solid #E2EAEA;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;border-radius:10px;background:#EEF4F4;display:flex;align-items:center;justify-content:center;color:#0C7A83;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:5px;">
+            <span style="font-size:14px;font-weight:600;color:#16302F;">Pokalbio pastabos</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+          </div>
+          <div style="font-size:12px;color:#9AA7A7;margin-top:3px;">Pastabų: 1</div>
+        </div>
+        <button onclick="{{ toggleSrc }}" style="width:42px;height:24px;border-radius:999px;border:none;padding:0;cursor:pointer;background:{{ srcTrackBg }};position:relative;flex-shrink:0;transition:background .18s;">
+          <div style="position:absolute;top:3px;left:{{ srcKnobLeft }};width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:left .18s;"></div>
+        </button>
+      </div>
+
+      <div style="flex:1;"></div>
+
+      <div style="font-size:13px;color:#9AA7A7;line-height:1.6;">Šaltinių perjungimas keičia tai, kas naudojama kitam generavimo veiksmui. Išjungti šaltiniai nebus naudojami, kol vėl neįjungsite.</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="">
+class Component extends DCLogic {
+  state = { tab: 'E025', a: true, v: true, an: true, srcOn: true, rec: false, elapsed: 0, note: '', status: 'idle' };
+
+  fmt(t) {
+    const m = Math.floor(t / 60), r = t % 60;
+    return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r;
+  }
+  toggleRec() {
+    if (this.state.rec) {
+      clearInterval(this._iv); this._iv = null;
+      this.setState({ rec: false });
+    } else {
+      this.setState({ rec: true, elapsed: 0, status: 'idle' });
+      this._iv = setInterval(() => this.setState(s => ({ elapsed: s.elapsed + 1 })), 1000);
+    }
+  }
+  onNote(e) {
+    const v = e.target.value;
+    clearTimeout(this._t1); clearTimeout(this._t2);
+    this.setState({ note: v, status: 'typing' });
+    this._t1 = setTimeout(() => {
+      this.setState({ status: 'saving' });
+      this._t2 = setTimeout(() => this.setState({ status: 'saved' }), 700);
+    }, 850);
+  }
+  componentWillUnmount() {
+    clearInterval(this._iv); clearTimeout(this._t1); clearTimeout(this._t2);
+  }
+
+  renderVals() {
+    const s = this.state;
+    const isE025 = s.tab === 'E025';
+    return {
+      isE025,
+      isTrans: s.tab === 'Transkripcija',
+      setE025: () => this.setState({ tab: 'E025' }),
+      setTrans: () => this.setState({ tab: 'Transkripcija' }),
+      e025Color: isE025 ? '#0C7A83' : '#8A9A9C',
+      e025Border: isE025 ? '#0C7A83' : 'transparent',
+      transColor: !isE025 ? '#0C7A83' : '#8A9A9C',
+      transBorder: !isE025 ? '#0C7A83' : 'transparent',
+      openA: s.a, openV: s.v, openAn: s.an,
+      caretA: s.a ? 'rotate(0deg)' : 'rotate(180deg)',
+      caretV: s.v ? 'rotate(0deg)' : 'rotate(180deg)',
+      caretAn: s.an ? 'rotate(0deg)' : 'rotate(180deg)',
+      toggleA: () => this.setState(st => ({ a: !st.a })),
+      toggleV: () => this.setState(st => ({ v: !st.v })),
+      toggleAn: () => this.setState(st => ({ an: !st.an })),
+      srcTrackBg: s.srcOn ? '#0C7A83' : '#D4DEDE',
+      srcKnobLeft: s.srcOn ? '21px' : '3px',
+      toggleSrc: () => this.setState(st => ({ srcOn: !st.srcOn })),
+
+      // recording / scribe
+      rec: s.rec,
+      elapsedFmt: this.fmt(s.elapsed),
+      toggleRec: () => this.toggleRec(),
+      scribeLabel: s.rec ? 'Įrašomas pokalbis' : 'Pasiruošę transkribuoti',
+      scribeAccent: s.rec ? '#DC2626' : '#0C7A83',
+      scribeBorder: s.rec ? '#F3C7C7' : '#DCE6E6',
+      scribeBg: s.rec ? '#FEF6F6' : '#ffffff',
+      recBtnLabel: s.rec ? 'Stabdyti' : 'Pradėti',
+      recBtnBg: s.rec ? '#DC2626' : '#ffffff',
+      recBtnBorder: s.rec ? '#DC2626' : '#0C7A83',
+      recBtnColor: s.rec ? '#ffffff' : '#0C7A83',
+
+      // doctor notes
+      note: s.note,
+      onNoteInput: (e) => this.onNote(e),
+      notesLocked: !s.rec,
+      stIdle: s.rec && s.status === 'idle',
+      stTyping: s.rec && s.status === 'typing',
+      stSaving: s.rec && s.status === 'saving',
+      stSaved: s.rec && s.status === 'saved',
+    };
+  }
+}
+</script>
+
+
+</body></html>
