@@ -42,10 +42,9 @@
   .pmeta{display:flex;flex-direction:column;}
   .stbadge{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-top:5px;white-space:nowrap;}
   .stdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
-  .st-plan{background:#EEF1F4;color:#586A7A;}    /* Suplanuotas — planned (calm slate) */
-  .st-checkin{background:#FBEFD8;color:#8A5A0B;} /* Registruojasi — checking in (amber) */
-  .st-active{background:#E1F2F1;color:#0C7A83;}  /* Vizitas vyksta — visiting now (brand teal) */
-  .st-done{background:#E6F4EA;color:#2E7D46;}    /* Aplankyta — done (green) */
+  .st-plan{background:#FCE7D2;color:#B15A16;}   /* Suplanuotas — planned (orange) */
+  .st-active{background:#E4F4E9;color:#2E7D46;} /* Vizitas vyksta — visiting now (green) */
+  .st-done{background:#EDF0F0;color:#5F6E6E;}   /* Aplankyta — done (grey) */
   .st-active .stdot{animation:recBlink 1.4s ease-in-out infinite;}
   .pat[aria-current="true"]{background:var(--teal-tint);}
   .pat:hover{background:#F5F8F8;}
@@ -257,23 +256,23 @@
 (function(){
   var $=function(id){return document.getElementById(id);};
   // patients
-  // Patient list. One status per patient: Suplanuotas -> Registruojasi -> Vizitas vyksta (today),
+  // Patient list. One status per patient: Suplanuotas (orange) -> Vizitas vyksta (green) -> Aplankyta (grey).
   // or Aplankyta (visited/older). Grouped by day/stage — competitor-informed (Nabla/Freed/Heidi).
   var PATS=[
     {i:'OP',n:'Ona Petraitienė',sec:'today',st:'reg',t:'11:00',v:3,active:true},
-    {i:'JP',n:'Jonas Petrauskas',sec:'today',st:'registering',t:'11:30',v:0},
+    {i:'JP',n:'Jonas Petrauskas',sec:'today',st:'plan',t:'11:30',v:0},
     {i:'GR',n:'Greta Ramanauskaitė',sec:'today',st:'plan',t:'12:15',v:2},
     {i:'TV',n:'Tadas Vasiliauskas',sec:'visited',st:'visit',t:'09:15',v:2},
     {i:'RJ',n:'Rasa Jonaitienė',sec:'visited',st:'visit',t:'08:40',v:1},
     {i:'MK',n:'Marius Kazlauskas',sec:'older',st:'data',t:'Tr',v:4},
     {i:'DB',n:'Danutė Butkienė',sec:'older',st:'visit',t:'An',v:2}
   ];
-  var ST={plan:['Suplanuotas','st-plan'],registering:['Registruojasi','st-checkin'],reg:['Vizitas vyksta','st-active'],visit:['Aplankyta','st-done']};
+  var ST={plan:['Suplanuotas','st-plan'],reg:['Vizitas vyksta','st-active'],visit:['Aplankyta','st-done']};
   function badge(st,title){var s=ST[st];return '<span class="stbadge '+s[1]+'"'+(title?' title="'+title+'"':'')+'><span class="stdot" style="background:currentColor;"></span>'+s[0]+'</span>';}
   // exactly ONE status per patient
   function badges(p){
     if(p.sec==='visited'||p.st==='visit'||p.st==='data') return badge('visit',(p.v||0)+' vizitai iš viso');
-    return badge(p.st); // Suplanuotas / Registruojasi / Vizitas vyksta
+    return badge(p.st); // Suplanuotas / Vizitas vyksta
   }
   function prow(p){return '<button class="pat" aria-current="'+(p.active?'true':'false')+'" data-n="'+p.n+'"><span class="pav">'+p.i+'</span><span class="pmeta" style="flex:1;min-width:0;"><span style="display:flex;align-items:center;gap:6px;"><span style="flex:1;min-width:0;font-size:14px;font-weight:500;color:var(--ink-s);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.n+'</span><span style="font-size:12px;color:var(--muted3);flex-shrink:0;">'+p.t+'</span></span><span style="display:flex;flex-wrap:wrap;gap:5px;">'+badges(p)+'</span></span></button>';}
   function phdr(t,n){return '<div class="rt" style="padding:14px 8px 4px;font-size:12px;font-weight:600;color:var(--muted2);">'+t+' · '+n+'</div>';}
@@ -294,7 +293,7 @@
   $('rc').onclick=function(){railC=!railC;$('grid').classList.toggle('rail-collapsed',railC);applyGrid();};
   $('ctxHide').onclick=function(){ctxC=true;$('ctxBody').style.display='none';$('ctxChip').style.display='flex';applyGrid();};
   $('ctxChip').onclick=function(){ctxC=false;$('ctxBody').style.display='flex';$('ctxChip').style.display='none';applyGrid();};
-  $('addP').onclick=function(){var t=new Date(),hh=('0'+t.getHours()).slice(-2),mm=('0'+t.getMinutes()).slice(-2);PATS.forEach(function(p){p.active=false;});PATS.unshift({i:'NP',n:'Naujas pacientas',sec:'today',st:'registering',t:hh+':'+mm,v:0,active:true});renderPats();};
+  $('addP').onclick=function(){var t=new Date(),hh=('0'+t.getHours()).slice(-2),mm=('0'+t.getMinutes()).slice(-2);PATS.forEach(function(p){p.active=false;});PATS.unshift({i:'NP',n:'Naujas pacientas',sec:'today',st:'plan',t:hh+':'+mm,v:0,active:true});renderPats();};
   // live clock — starts on Start scribing
   var sec=0, recording=false, clockTimer=null, streamTimer=null;
   function fmt(x){var m=Math.floor(x/60),s=x%60;return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
