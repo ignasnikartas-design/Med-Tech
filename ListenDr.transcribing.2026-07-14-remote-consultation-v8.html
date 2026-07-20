@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ListenDr — transkribavimas (pacientai + pastabos)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* v3 redesign: lighter healthcare-SaaS palette — soft shadows + whitespace (reference-driven) */
+    --bg:#F5F7FA;--card:#fff;--border:#EAEEF3;--border2:#EEF1F5;
+    --ink:#101828;--ink-s:#101828;--ink-f:#344054;
+    --teal:#007682;--teal-dark:#006671;--teal-deep:#0C3B3F;--teal-acc:#4FD3DE;--teal-tint:#EFF9FA;--teal-bd:#B3D9DC;
+    --field:#F7F9FB;--muted:#98A2B3;--muted2:#98A2B3;--muted3:#667085;--red:#DC2626;--patb:#CCE4E6;--amber:#92400E;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+    --shadow-md:0 2px 6px rgba(16,24,40,.05), 0 6px 16px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:'Figtree',system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+  button,input{font-family:inherit;}
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(100,116,116,.22);border-radius:4px;}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+  @keyframes recBlink{0%,100%{opacity:1}50%{opacity:.35}}
+  .app{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+  .topnav{height:60px;flex-shrink:0;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;padding:0 20px;}
+  .navbtn{height:38px;padding:0 14px;background:#fff;border:1px solid var(--border2);border-radius:11px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:#37504F;cursor:pointer;}
+  .body{flex:1;overflow:hidden;display:grid;grid-template-columns:236px minmax(0,1fr) minmax(0,1.12fr) 300px;gap:16px;padding:18px;}
+  .col{min-width:0;display:flex;flex-direction:column;overflow:hidden;}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);}
+  .lbl{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);}
+  .who{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;text-align:center;}
+  .who.d{background:var(--teal-tint);color:var(--teal);}
+  .who.p{background:#fff;color:#555;border:1px solid var(--border);}
+  .tl{display:grid;grid-template-columns:42px 88px 1fr;gap:10px;padding:6px 0;align-items:baseline;font-size:13px;}
+  .tl .ts{color:var(--muted3);font-size:12px;font-variant-numeric:tabular-nums;}
+  .note{display:flex;gap:9px;align-items:flex-start;background:var(--teal-tint);border:1px solid #BCDCDE;border-left:3px solid var(--teal);border-radius:0 10px 10px 0;padding:8px 12px;margin:6px 0;}
+  .note .ic{color:var(--teal);flex-shrink:0;margin-top:1px;}
+  .note .lab{font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--teal);}
+  .note .tx{font-size:13px;color:#28403F;margin-top:2px;line-height:1.45;}
+  .pat{width:100%;text-align:left;background:none;border:none;padding:10px 10px;border-radius:12px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .12s;}
+  .pmeta{display:flex;flex-direction:column;}
+  .stbadge{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin-top:5px;white-space:nowrap;}
+  .stdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .st-plan{background:#FCE7D2;color:#B15A16;}   /* Suplanuotas — planned (orange) */
+  .st-active{background:#E4F4E9;color:#2E7D46;} /* Vizitas vyksta — visiting now (green) */
+  .st-done{background:#EDF0F0;color:#5F6E6E;}   /* Aplankyta — done (grey) */
+  .st-active .stdot{animation:recBlink 1.4s ease-in-out infinite;}
+  .pat[aria-current="true"]{background:var(--teal-tint);}
+  .pat:hover{background:#F5F8F8;}
+  .pav{width:40px;height:40px;border-radius:12px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:13px;font-weight:700;flex-shrink:0;}
+  .rail-collapsed .rt,.rail-collapsed .pn,.rail-collapsed .pt,.rail-collapsed .pmeta{display:none !important;}
+  .efld{height:58px;padding:12px 14px;background:var(--field);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--ink-f);outline:none;width:100%;}
+  .efld:focus,.eta:focus{border-color:var(--teal);background:#fff;}
+  .eta{width:100%;min-height:104px;padding:12px 14px;background:var(--field);border:1px solid var(--border);border-radius:8px;font-size:14px;color:var(--ink-f);resize:vertical;outline:none;line-height:1.6;}
+  .egrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .esec{border:1px solid var(--border2);border-radius:16px;padding:16px 18px;margin-bottom:12px;background:#fff;}
+  /* Claude.ai-style consultation form — E025 panel only (structure/fields/order unchanged) */
+  #panel-E025 .esec-card-legacy{}
+  #panel-E025 .ehead{gap:12px;}
+  #panel-E025 .echip{width:34px;height:34px;border-radius:10px;background:#F6F7F9;color:var(--teal);}
+  #panel-E025 .etitle{font-size:17px;font-weight:600;color:#1F2937;letter-spacing:-0.01em;}
+  #panel-E025 .ecaret{stroke:#C4CAD3;}
+  #panel-E025 .flabel{font-size:13px;font-weight:500;color:#8A94A6;margin-bottom:10px;}
+  #panel-E025 .eta{background:#F8FAFC;border:1px solid #E3E8EF;border-radius:10px;padding:14px 16px;min-height:100px;font-size:14px;line-height:1.6;color:var(--ink);transition:border-color .15s,box-shadow .15s;}
+  #panel-E025 .eta:focus{border-color:var(--teal-bd);background:#fff;box-shadow:0 0 0 3px rgba(0,118,130,.10);outline:none;}
+  #panel-E025 .efld{background:#F8FAFC;border:1px solid #E3E8EF;border-radius:10px;height:50px;padding:12px 14px;font-size:14px;color:var(--ink);transition:border-color .15s,box-shadow .15s;}
+  #panel-E025 .efld:focus{border-color:var(--teal-bd);background:#fff;box-shadow:0 0 0 3px rgba(0,118,130,.10);outline:none;}
+  #panel-E025 .efld::placeholder{color:#AEB6C2;}
+  #panel-E025 .egrid{gap:14px;}
+  #panel-E025 .aibadge{background:#F5F7FA;color:var(--teal);border:1px solid #E6EAEE;border-radius:999px;padding:3px 9px;}
+  #panel-E025 .e025btn{height:40px;padding:0 16px;border-radius:12px;font-weight:500;transition:background .15s,border-color .15s;}
+  #panel-E025 .e025btn.ghost:hover{background:#F6F7F9;}
+  #panel-E025 .e025btn.tint:hover{background:#E6F3F4;}
+  #panel-E025 .e025btn.solid:hover{background:var(--teal-dark);}
+  #panel-E025 .ebody{margin-top:16px !important;}
+  /* connected-card tab bar (design-system Tab Bar) */
+  .tabbar{display:flex;gap:4px;padding:0 0 0 2px;flex-shrink:0;border-bottom:1px solid var(--border);}
+  .tab{height:42px;padding:0 22px;background:transparent;border:1px solid transparent;border-bottom:none;border-radius:12px 12px 0 0;color:var(--muted3);font-size:14px;font-weight:500;cursor:pointer;margin-bottom:-1px;transition:color .12s,background .12s;}
+  .tab:hover{color:var(--ink);}
+  .tab[aria-selected="true"]{background:#fff;border-color:var(--border);color:var(--ink);font-weight:600;}
+  #pname{transition:background .12s,box-shadow .12s;}
+  #pname::placeholder{color:var(--muted);font-weight:700;opacity:1;}
+  #pname:hover{background:#F3F5F8;}
+  #pname:focus{background:#fff;box-shadow:0 0 0 3px rgba(0,118,130,.12);}
+  .tctl{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--ink-f);font-size:13px;font-weight:500;cursor:pointer;}
+  .tctl:hover{background:#F6F7F9;}
+  .spin-s{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.5);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;}
+  .spin-t{display:inline-block;width:16px;height:16px;border:2px solid var(--teal-tint);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+  /* E025 sections back to divider-separated inside the white document panel */
+  #panel-E025 .esec{border:none;border-top:1px solid var(--border);border-radius:0;padding:24px 0;margin-bottom:0;background:transparent;box-shadow:none;}
+  /* first section keeps its top border = the single divider under the E025 header */
+  .e025btn{height:38px;padding:0 14px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:7px;border:1px solid transparent;}
+  .e025btn.ghost{background:#fff;border-color:var(--border);color:var(--ink-f);}
+  .e025btn.tint{background:var(--teal-tint);border-color:var(--teal-bd);color:var(--teal);}
+  .e025btn.solid{background:var(--teal);color:#fff;}
+  .aibadge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:var(--teal-tint);color:var(--teal);border:1px solid var(--teal-bd);flex-shrink:0;}
+  .flabel{font-size:14px;font-weight:500;color:var(--ink-f);margin-bottom:8px;}
+  .ehead{width:100%;background:none;border:none;padding:0;display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .echip{width:36px;height:36px;border-radius:10px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;}
+  .etitle{flex:1;text-align:left;font-size:16px;font-weight:600;color:var(--ink-s);}
+  .ecaret{transition:transform .18s;}
+  .tl{position:relative;padding-right:22px;}
+  .anc{position:absolute;right:0;top:3px;width:20px;height:20px;border:1px solid var(--border2);background:#fff;border-radius:6px;color:var(--teal);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .12s;}
+  .tl:hover .anc,.anc:focus{opacity:1;}
+  .anc:hover{border-color:var(--teal);background:var(--teal-tint);}
+  @keyframes noteIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .note.new{animation:noteIn .28s ease-out;}
+  .kbd{font:600 11px/1 'Figtree',sans-serif;color:var(--muted3);background:#F1F5F5;border:1px solid var(--border2);border-radius:5px;padding:3px 6px;}
+  #nf .hint{opacity:0;transition:opacity .15s;flex-shrink:0;}
+  #nf:hover .hint,#nf:focus-within .hint{opacity:1;}
+  @media (prefers-reduced-motion:reduce){.note.new{animation:none;}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .nextchip:hover{border-color:var(--teal)!important;background:var(--teal-tint)!important;}
+  .tl.new{animation:noteIn .28s ease-out;}
+  /* editable patient phone in the header — looks like text until hover/focus (matches #pname) */
+  .ph-phone{display:inline-flex;align-items:center;gap:7px;margin-top:5px;margin-left:-7px;padding:3px 7px;border-radius:8px;cursor:text;transition:background .15s,box-shadow .15s;}
+  .ph-phone:hover{background:#F3F5F8;}
+  .ph-phone:focus-within{background:#fff;box-shadow:0 0 0 3px rgba(0,118,130,.12);}
+  .ph-phone.invalid:focus-within{box-shadow:0 0 0 3px rgba(220,38,38,.14);}
+  .ph-phone .pic{color:var(--teal);display:flex;flex-shrink:0;transition:color .15s;}
+  .ph-phone.invalid .pic{color:var(--red);}
+  .ph-phone .pic svg{width:14px;height:14px;}
+  #pphone{border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.02em;width:132px;}
+  #pphone::placeholder{color:var(--muted2);font-weight:500;letter-spacing:.05em;}
+  .ph-tick{color:#166534;display:flex;opacity:0;transition:opacity .15s;}
+  .ph-phone.valid .ph-tick{opacity:1;}
+  .ph-tick svg{width:14px;height:14px;}
+  /* pre-call confirmation modal — lightweight confirm-before-dial (patient + number + consent) */
+  @keyframes ovIn{from{opacity:0}to{opacity:1}}
+  @keyframes shIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+  .modal-ov{position:fixed;inset:0;background:rgba(17,17,17,.34);display:none;align-items:center;justify-content:center;z-index:70;animation:ovIn .16s ease-out;}
+  .modal-ov.open{display:flex;}
+  .sheet{width:380px;max-width:calc(100vw - 32px);background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.22);padding:20px;animation:shIn .2s ease-out;}
+  .sheet h3{margin:0;font-size:16px;font-weight:700;color:var(--ink-s);}
+  .sheet .sub{font-size:13px;color:var(--muted3);margin-top:3px;}
+  .callee{display:flex;align-items:center;gap:12px;background:var(--field);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:16px 0 12px;}
+  .callee .av{width:40px;height:40px;border-radius:11px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:13px;font-weight:700;flex-shrink:0;}
+  .callee .nm{font-size:15px;font-weight:600;color:var(--ink);}
+  .callee .no{font-size:13px;color:var(--ink-f);font-variant-numeric:tabular-nums;margin-top:2px;letter-spacing:.02em;}
+  .consent{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;color:#28403F;background:var(--teal-tint);border:1px solid #BCDCDE;border-radius:10px;padding:10px 12px;margin-bottom:16px;}
+  .consent .ci{color:var(--teal);flex-shrink:0;margin-top:1px;}
+  .sheet-actions{display:flex;gap:10px;}
+  .sheet-actions button{flex:1;height:44px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+  .btn-cancel{background:#fff;border-color:var(--border);color:var(--ink-f);}
+  .btn-cancel:hover{background:#F6F7F9;}
+  .btn-call{background:#53B65A;color:#fff;}
+  .btn-call:hover{background:#47a44e;}
+  @media (prefers-reduced-motion:reduce){.modal-ov,.sheet{animation:none;}}
+  /* live capture-status patterns (competitor-grounded: Heidi/Nabla mic-level; ElevenLabs interim) */
+  @keyframes wv{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+  .wave{display:inline-flex;align-items:center;gap:2px;height:18px;}
+  .wave span{width:3px;height:18px;background:var(--red);border-radius:2px;transform-origin:center;opacity:.9;animation:wv 1s ease-in-out infinite;}
+  .wave span:nth-child(1){animation-delay:0s}.wave span:nth-child(2){animation-delay:.12s}.wave span:nth-child(3){animation-delay:.24s}.wave span:nth-child(4){animation-delay:.36s}.wave span:nth-child(5){animation-delay:.18s}.wave span:nth-child(6){animation-delay:.30s}.wave span:nth-child(7){animation-delay:.06s}
+  .listening{display:flex;align-items:center;gap:8px;padding:8px 2px 2px;color:var(--muted3);font-size:12px;font-weight:500;}
+  .listening .ld{display:inline-flex;gap:3px;}
+  .listening .ld i{width:5px;height:5px;border-radius:50%;background:var(--teal);display:inline-block;animation:wv 1.2s ease-in-out infinite;}
+  .listening .ld i:nth-child(2){animation-delay:.2s}.listening .ld i:nth-child(3){animation-delay:.4s}
+  .tl.interim span:last-child{color:var(--muted2);font-style:italic;}
+  .tl.interim .who{opacity:.6;}
+  .caret{display:inline-block;width:2px;height:1em;background:var(--teal);margin-left:2px;vertical-align:text-bottom;animation:wv .9s steps(1) infinite;}
+  /* skeleton loader (perceived performance) */
+  @keyframes shimmer{0%{background-position:-200px 0}100%{background-position:calc(200px + 100%) 0}}
+  .sk{height:12px;border-radius:6px;background:#EEF1F4;background-image:linear-gradient(90deg,#EEF1F4 0px,#F6F8FA 60px,#EEF1F4 120px);background-size:200px 100%;animation:shimmer 1.2s linear infinite;}
+  @media (prefers-reduced-motion:reduce){.wave span,.listening .ld i,.caret,.sk{animation:none!important;}.wave span{transform:scaleY(.7);}}
+  /* consultation-status chip (persisted per patient row) */
+  .cstat{align-self:flex-start;display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;margin-top:4px;white-space:nowrap;}
+  .cstat .cd{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;}
+  .cs-neutral{background:#EDF0F0;color:#5F6E6E;} .cs-info{background:#E5EEF6;color:#2B5C86;}
+  .cs-good{background:#E4F4E9;color:#2E7D46;} .cs-warn{background:#FCE7D2;color:#B15A16;} .cs-bad{background:#FCE0E0;color:#B42318;}
+  /* patient search */
+  .psearch{display:flex;align-items:center;gap:8px;background:var(--field);border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin:0 8px 6px;}
+  .psearch input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:13px;color:var(--ink-f);}
+  .psearch input::placeholder{color:var(--muted2);}
+  /* generic dialog (consent/callback/submit) reuse of modal styles */
+  .field-row{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+  .field-row label{font-size:12px;font-weight:600;color:var(--ink-f);}
+  .field-row input,.field-row select{height:42px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--field);font-size:14px;color:var(--ink);outline:none;font-family:inherit;}
+  .field-row input:focus,.field-row select:focus{border-color:var(--teal-bd);background:#fff;box-shadow:0 0 0 3px rgba(0,118,130,.10);}
+  .idrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .idrow:last-child{border-bottom:none;} .idrow .k{color:var(--muted3);} .idrow .v{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}
+  .consent-ok{background:#E4F4E9;border:1px solid #BFE3CB;color:#2E7D46;}
+  .consent-miss{background:#FEF3C7;border:1px solid #F3D98B;color:#8A5A00;}
+  .consent-box{display:flex;gap:9px;align-items:flex-start;border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12.5px;line-height:1.5;}
+  .consent-box .ci{flex-shrink:0;margin-top:1px;}
+  /* quality meters (audio/network) */
+  .qmeter{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--muted3);}
+  .qbars{display:inline-flex;align-items:flex-end;gap:2px;height:14px;}
+  .qbars i{width:3px;background:#CBD5E1;border-radius:1px;} .qbars i:nth-child(1){height:5px}.qbars i:nth-child(2){height:8px}.qbars i:nth-child(3){height:11px}.qbars i:nth-child(4){height:14px}
+  .qbars.q-good i{background:#2E7D46;} .qbars.q-mid i:nth-child(-n+3){background:#B15A16;} .qbars.q-low i:nth-child(-n+2){background:#B42318;}
+  .vlink{background:none;border:none;color:var(--teal);font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:2px;}
+  /* Dokumentai (AMIS documents) — search + source chips + grouped rows */
+  .docsearch{display:flex;align-items:center;gap:12px;height:52px;padding:0 16px;background:#fff;border:1px solid #E3E8EF;border-radius:12px;margin-bottom:16px;transition:border-color .15s,box-shadow .15s;}
+  .docsearch svg{width:18px;height:18px;color:#9AA7B4;flex-shrink:0;}
+  .docsearch input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:15px;color:var(--ink);}
+  .docsearch input::placeholder{color:#9AA7B4;}
+  .docsearch:focus-within{border-color:var(--teal-bd);box-shadow:0 0 0 3px rgba(0,118,130,.10);}
+  #docSrcBox{background:#F8FAFC;border:1px solid #EEF1F4;border-radius:14px;padding:14px 16px;margin-bottom:8px;}
+  #docSrcBox .lbl{margin-bottom:11px;}
+  /* source filter chips (single-select + counts) */
+  .docsrc{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;padding:8px 14px;border-radius:12px;background:#fff;border:1.5px solid #E3E8EF;color:var(--muted3);cursor:pointer;transition:border-color .12s,color .12s,background .12s;}
+  .docsrc .cdot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;}
+  .docsrc .cnt{color:var(--muted2);font-weight:600;font-variant-numeric:tabular-nums;}
+  .docsrc:hover{border-color:#CBD5E1;}
+  .docsrc:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+  .docsrc.on .cnt{color:inherit;opacity:.7;}
+  /* toolbar */
+  .doctoolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0 8px;flex-wrap:wrap;}
+  #docCount{font-size:13px;font-weight:500;color:var(--muted3);}
+  .docsort{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted3);border:1px solid var(--border);border-radius:10px;padding:6px 12px;background:#fff;}
+  .docsort select{border:none;background:none;font:inherit;font-weight:600;color:var(--ink-f);outline:none;cursor:pointer;}
+  /* chronological timeline */
+  .tyear{font-size:13px;font-weight:800;color:var(--ink-s);letter-spacing:.02em;margin:18px 0 10px;}
+  .tlg{position:relative;margin-left:5px;padding-left:22px;border-left:2px solid var(--border);}
+  .tli{position:relative;margin-bottom:10px;}
+  .tli .tdot{position:absolute;left:-28px;top:15px;width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid currentColor;}
+  .hcard{display:block;width:100%;text-align:left;border:1px solid var(--border);border-left-width:3px;border-radius:12px;padding:11px 14px;background:#fff;cursor:pointer;font:inherit;transition:border-color .12s,box-shadow .12s;}
+  .hcard:hover{border-color:var(--teal-bd);box-shadow:0 2px 10px rgba(0,0,0,.05);}
+  .hcard:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+  .hc-top{display:flex;align-items:center;gap:10px;}
+  .hc-tag{font-size:10px;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:999px;border:1px solid;flex-shrink:0;}
+  .hc-title{font-size:14px;font-weight:600;color:var(--ink-s);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hc-date{font-size:12px;color:var(--muted3);font-variant-numeric:tabular-nums;flex-shrink:0;}
+  .hc-dx{margin-top:6px;font-size:13px;color:var(--ink-f);display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;}
+  .hc-dx .dl{color:var(--muted2);font-weight:600;}
+  .hc-dx b{color:var(--ink);font-weight:700;}
+  .hc-icd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;background:#EEF1F4;color:#475569;border-radius:6px;padding:2px 8px;}
+  .hc-sum{margin-top:5px;font-size:12.5px;color:var(--muted3);line-height:1.5;}
+  .hc-meta{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px 18px;font-size:12.5px;color:var(--ink-f);}
+  .hc-meta .ml{color:var(--muted2);font-weight:600;margin-right:5px;}
+  .docempty{text-align:center;color:var(--muted3);font-size:14px;line-height:1.6;padding:40px 20px;}
+  /* ADA-262 fast-decision patient header */
+  .pc-age{font-size:13px;font-weight:600;color:var(--ink-f);font-variant-numeric:tabular-nums;}
+  .pc-sep{color:var(--muted2);font-size:12px;}
+  .pc-cond{font-size:12px;font-weight:600;color:var(--teal);background:var(--teal-tint);border:1px solid var(--teal-bd);border-radius:999px;padding:2px 9px;}
+  .pc-allergy{font-size:12px;font-weight:700;color:#B42318;background:#FCE0E0;border:1px solid #F3C7C7;border-radius:999px;padding:2px 9px;display:inline-flex;align-items:center;gap:5px;}
+  /* editable phone as a proper field inside the call modal */
+  #callModal .ph-phone{background:var(--field);border:1px solid var(--border);border-radius:10px;padding:11px 12px;margin:0;cursor:text;}
+  #callModal .ph-phone:hover{background:var(--field);}
+  #callModal .ph-phone:focus-within{background:#fff;border-color:var(--teal-bd);box-shadow:0 0 0 3px rgba(0,118,130,.10);}
+  #callModal .ph-phone.invalid:focus-within{box-shadow:0 0 0 3px rgba(220,38,38,.14);}
+  #callModal #pphone{width:100%;font-size:15px;}
+  /* v3 hover/interaction polish */
+  #callBtn:hover{background:#47a44e;}
+  #scribeBtn:hover{background:#F6F8FA;border-color:#DCE2E9;}
+  .card{transition:box-shadow .15s;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topnav">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:40px;height:40px;border-radius:11px;background:var(--teal-deep);display:flex;align-items:center;justify-content:center;color:var(--teal-acc);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"></path></svg></div>
+      <div style="line-height:1;"><div style="font-size:18px;font-weight:800;color:var(--ink-s);">ListenDr</div><div style="font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--teal);margin-top:3px;">LISTEN DOCTOR</div></div>
+    </div>
+    <div style="flex:1;"></div>
+    <div style="width:40px;height:40px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:600;">A</div>
+  </div>
+
+  <div class="body" id="grid">
+    <!-- FAR LEFT: PATIENTS -->
+    <aside class="col card" style="overflow:hidden;">
+      <div style="flex:1;overflow-y:auto;padding:12px 8px 10px;">
+        <div class="rt" style="padding:6px 8px 8px;"><span class="lbl">PACIENTAI</span></div>
+        <div id="plist"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding:8px;display:flex;justify-content:flex-end;flex-shrink:0;"><button id="rc" aria-label="Sutraukti" style="width:30px;height:30px;border:1px solid var(--border2);background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted3);cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></button></div>
+    </aside>
+
+    <!-- CHAT / AI (before/after visit) -->
+    <div class="col card" style="padding:16px;">
+      <div id="recBox" style="flex-shrink:0;margin-bottom:14px;">
+        <div id="scribeCard" style="display:flex;align-items:center;gap:10px;background:var(--teal-tint);border:1px solid var(--teal-bd);border-radius:12px;padding:8px 8px 8px 14px;">
+          <span id="scribeIcon" style="display:inline-flex;align-items:center;flex-shrink:0;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg></span>
+          <span id="scribeLabel" style="flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--ink-s);">Pasiruošę transkribuoti</span>
+          <button id="scribeBtn" style="height:34px;padding:0 16px;background:#fff;border:1px solid var(--teal-bd);border-radius:9px;color:var(--teal);font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;flex-shrink:0;box-shadow:0 1px 2px rgba(16,24,40,.06);transition:background .12s;">Pradėti</button>
+        </div>
+      </div>
+      <div class="lbl" style="flex-shrink:0;">POKALBIS SU AI</div>
+      <div id="chatScroll" style="flex:1;overflow-y:auto;margin-top:12px;display:flex;flex-direction:column;gap:12px;">
+        <div style="align-self:flex-end;max-width:88%;background:var(--teal);color:#fff;border-radius:14px;padding:12px 16px;font-size:14px;font-weight:500;">Parenkite E025 konsultacijos aprašymą.</div>
+        <div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;">
+          <div style="font-size:13px;font-style:italic;color:var(--muted3);display:flex;align-items:center;gap:6px;margin-bottom:10px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg> Samprotavimas</div>
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:var(--ink-f);">Pradedu – imu paciento duomenis ir konsultacijos transkripciją. Pacientė <b style="font-weight:600;">Vaiva Paškevičienė</b> identifikuota. Prieš pildydamas formą atkreipiu dėmesį:</p>
+          <div style="font-size:14px;font-weight:600;color:var(--amber);margin-bottom:6px;">⚠ Transkripcijoje kol kas mažai medicininės informacijos</div>
+          <div style="font-size:14px;font-weight:600;color:var(--ink-s);margin:12px 0 8px;">Ką galiu padaryti:</div>
+          <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.6;color:var(--ink-f);">
+            <li style="margin-bottom:8px;"><b style="font-weight:600;">Užpildyti E025</b> pagal turimus siuntimus ir pastabas.</li>
+            <li style="margin-bottom:8px;"><b style="font-weight:600;">Palaukti</b> daugiau konteksto iš pokalbio.</li>
+            <li><b style="font-weight:600;">Pildyti iš to, ką turime</b> – forma bus dalinė.</li>
+          </ol>
+          <p style="margin:12px 0 0;font-size:14px;color:var(--ink-f);">Kaip norėtumėte tęsti?</p>
+        </div>
+      </div>
+      <div style="flex-shrink:0;margin-top:12px;">
+        <div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border2);border-radius:11px;padding:8px 8px 8px 14px;">
+          <input placeholder="Klauskite ADA (prieš / po vizito)…" style="flex:1;min-width:0;border:none;outline:none;font-size:14px;color:var(--ink-f);background:none;">
+          <button aria-label="Siųsti" style="width:38px;height:38px;border-radius:9px;background:var(--teal);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: PATIENT + TRANSCRIPT + NOTES -->
+    <div class="col">
+      <div class="card" style="padding:16px 22px;display:flex;align-items:center;gap:14px;flex-shrink:0;margin-bottom:16px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted3);flex-shrink:0;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a7 7 0 0 1 14 0v1"></path></svg></div>
+        <div style="flex:1;min-width:0;">
+          <input id="pname" type="text" autocomplete="off" placeholder="Įveskite paciento vardą" aria-label="Paciento vardas" style="width:100%;border:none;background:transparent;outline:none;font-family:inherit;font-size:16px;font-weight:700;color:var(--ink);letter-spacing:-0.02em;padding:3px 7px;margin:-3px -7px;border-radius:8px;">
+          <!-- age + gender, close to the patient name -->
+          <div id="pclinical" style="font-size:13px;color:var(--muted3);margin-top:3px;font-variant-numeric:tabular-nums;"></div>
+        </div>
+        <button id="callBtn" style="height:44px;padding:0 20px;background:#53B65A;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,.08);transition:background .12s;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg> Skambinti pacientui</button>
+      </div>
+      <div class="tabbar" role="tablist" aria-label="Konsultacijos rodinys">
+        <button id="tabE025" class="tab" role="tab" aria-selected="false" aria-controls="panel-E025" tabindex="-1">E025</button>
+        <button id="tabTrans" class="tab" role="tab" aria-selected="true" aria-controls="panel-Trans" tabindex="0">Transkripcija</button>
+        <button id="tabAnam" class="tab" role="tab" aria-selected="false" aria-controls="panel-Anam" tabindex="-1">Dokumentai</button>
+      </div>
+      <div id="scrollArea" style="flex:1;overflow-y:auto;padding:24px;background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 16px 16px;box-shadow:var(--shadow);">
+        <div id="panel-Trans" role="tabpanel" aria-labelledby="tabTrans" style="display:flex;flex-direction:column;gap:12px;">
+        <div id="idlePrompt" class="card" style="padding:44px 20px;text-align:center;">
+          <div style="width:46px;height:46px;border-radius:50%;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);margin:0 auto 12px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg></div>
+          <div style="font-size:15px;font-weight:600;color:var(--ink-s);">Pasiruošę skambučiui</div>
+          <div style="font-size:13px;color:var(--muted3);margin-top:4px;max-width:360px;margin-left:auto;margin-right:auto;line-height:1.5;">Paspauskite „Skambinti pacientui", kad pradėtumėte konsultaciją. Transkripcija prasidės automatiškai, kai pacientas atsilieps.</div>
+          <div style="font-size:13px;color:var(--muted2);margin-top:10px;font-variant-numeric:tabular-nums;">00:00</div>
+        </div>
+        <div id="recCard" class="card" style="display:none;border-color:#F3C7C7;padding:12px 14px;">
+          <span style="width:9px;height:9px;border-radius:50%;background:var(--red);animation:recBlink 1.4s ease-in-out infinite;"></span>
+          <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Įrašoma…</div><div style="font-size:12px;color:var(--muted3);">Tiesiogiai · Klausoma kalbos…</div></div>
+          <span style="font-size:13px;color:var(--muted3);font-variant-numeric:tabular-nums;" id="clk">00:07</span>
+        </div>
+        <div id="streamCard" class="card" style="display:none;padding:6px 14px 12px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:6px;">
+            <div style="font-size:13px;font-weight:600;color:var(--ink-s);">Įrašas 1</div><div style="font-size:12px;color:var(--muted3);">2026-07-03 08:13</div><div style="flex:1;"></div><span style="font-size:12px;color:var(--muted3);font-variant-numeric:tabular-nums;" id="recLen">00:00</span>
+          </div>
+          <div id="stream" role="log" aria-live="polite" aria-label="Tiesioginė transkripcija">
+            <div class="tl"><span class="ts">00:04</span><span class="who d">Gydytojas</span><span>Sveiki, papasakokite, dėl ko atvykote.</span></div>
+            <div class="tl"><span class="ts">00:09</span><span class="who p">Pacientė</span><span>Tirpsta dešinio nykščio dalis jau apie dvi savaites.</span></div>
+            <div class="tl"><span class="ts">00:18</span><span class="who d">Gydytojas</span><span>Ar tirpimas pastovus, ar tik judant?</span></div>
+            <div class="tl"><span class="ts">00:25</span><span class="who p">Pacientė</span><span>Atsiranda ištiesus ranką ir sukant riešą.</span></div>
+            <div class="note"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></span><div><div class="lab">GYDYTOJO PASTABA · 00:31</div><div class="tx">Teigiamas Finkelšteino testas.</div></div></div>
+            <div class="tl"><span class="ts">00:38</span><span class="who d">Gydytojas</span><span>Ar būna silpnumas, ar tik tirpimas ir skausmas?</span></div>
+            <div class="tl"><span class="ts">00:45</span><span class="who p">Pacientė</span><span>Silpnumo nejaučiu, tik tirpimas ir skausmas.</span></div>
+          </div>
+        </div>
+        </div>
+        <div id="panel-E025" role="tabpanel" aria-labelledby="tabE025" hidden>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:0;"><div class="lbl">KONSULTACIJOS APRAŠYMAS</div><div style="font-size:22px;font-weight:700;color:var(--ink-s);margin-top:3px;">E025</div></div>
+            <button class="e025btn ghost" id="e025Draft"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg> Išsaugoti juodraštį</button>
+            <button class="e025btn tint" id="e025Regen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v6h6M21 12A9 9 0 0 0 6 5.3L3 8"></path><path d="M21 22v-6h-6M3 12a9 9 0 0 0 15 6.7l3-2.7"></path></svg> Pergeneruoti</button>
+            <button class="e025btn solid" id="e025Send"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg> Siųsti į EPTS</button>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path><path d="M12 7v5l3 3"></path></svg></span><span class="etitle">Anamnezė</span><span class="aibadge">✦ AI</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Nusiskundimai ir anamnezė</div>
+              <textarea id="eta-anamneze" class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M9 8h6M9 12l2 2 4-4"></path></svg></span><span class="etitle">Diagnozė</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Diagnozės</div>
+              <textarea id="eta-diagnoze" class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-14 2 8h6"></path></svg></span><span class="etitle">Kraujospūdis ir kvėpavimas</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;"><div class="egrid">
+              <input class="efld" placeholder="AKS-S, MMHG"><input class="efld" placeholder="AKS-D, MMHG"><input class="efld" placeholder="PULSAS, K./MIN">
+              <input class="efld" placeholder="KVĖPAV., K./MIN"><input class="efld" placeholder="SATURACIJA, %"><input class="efld" placeholder="PROMILĖS">
+              <input class="efld" placeholder="TEMP., °C">
+            </div></div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"></path><path d="M14.5 12.5l-2 2M11.5 9.5l-2 2M8.5 6.5l-2 2M17.5 15.5l-2 2"></path></svg></span><span class="etitle">Antropometriniai duomenys</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;"><div class="egrid">
+              <input class="efld" placeholder="SVORIS, KG"><input class="efld" placeholder="ŪGIS, CM"><input class="efld" placeholder="KMI">
+              <input class="efld" placeholder="KRŪTINĖS AP., CM"><input class="efld" placeholder="KLUBŲ AP., CM"><input class="efld" placeholder="JUOSMENS AP., CM">
+              <input class="efld" placeholder="GALVOS AP., CM">
+            </div></div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M9 8h6M9 12h6M9 16h4"></path></svg></span><span class="etitle">Būklės vertinimas</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Objektyvi būklė</div>
+              <textarea id="eta-bukle" class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"></path></svg></span><span class="etitle">Tyrimų ir konsultacijų planas</span><span class="aibadge">✦ AI</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Planas</div>
+              <textarea id="eta-planas" class="eta" placeholder=""></textarea>
+              <div class="flabel" style="margin-top:14px;">Atlikti tyrimai ir konsultacijos</div>
+              <textarea class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"></path><path d="M8.5 8.5l7 7"></path></svg></span><span class="etitle">Gydymas</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Nemedikamentinis gydymas</div>
+              <textarea class="eta" placeholder=""></textarea>
+              <div class="flabel" style="margin-top:14px;">Medikamentinis gydymas</div>
+              <textarea class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M9 13h6M9 17h4"></path></svg></span><span class="etitle">Receptai ir siuntimai</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Rekomendacijos</div>
+              <textarea class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+
+          <div class="esec">
+            <button class="ehead"><span class="echip"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></span><span class="etitle">Pastabos</span><svg class="ecaret" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9AA7A7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg></button>
+            <div class="ebody" style="margin-top:14px;">
+              <div class="flabel">Pastabos</div>
+              <textarea class="eta" placeholder=""></textarea>
+            </div>
+          </div>
+        </div>
+        <div id="panel-Anam" role="tabpanel" aria-labelledby="tabAnam" hidden>
+          <div class="lbl">PACIENTO ISTORIJA</div>
+          <div style="font-size:22px;font-weight:700;color:var(--ink-s);margin:3px 0 14px;">Dokumentai</div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted3);margin-bottom:16px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg> Tik peržiūrai — įrašai iš AMIS istorijos.</div>
+          <div class="docsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg><input id="docSearch" type="search" autocomplete="off" placeholder="Ieškoti diagnozių, TLK-10, vaistų, gydytojų ar dokumentų…" aria-label="Ieškoti istorijoje"></div>
+          <div id="docSrcBox">
+            <div class="lbl">ŠALTINIAI</div>
+            <div id="docSources" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+          </div>
+          <div class="doctoolbar">
+            <div id="docCount" aria-live="polite"></div>
+            <label class="docsort">Rūšiuojama: <select id="docSort" aria-label="Rūšiavimas"><option value="new">naujausi pirma</option><option value="old">seniausi pirma</option></select></label>
+          </div>
+          <div id="docTimeline"></div>
+        </div>
+      </div>
+      <!-- objektyvi pastaba: co-located input; aligned to match the AI composer + form controls (ADA-262) -->
+      <form id="nf" style="flex-shrink:0;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border2);border-radius:11px;padding:8px 8px 8px 14px;margin-top:6px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+        <input id="ni" autocomplete="off" aria-label="Objektyvi pastaba" placeholder="Objektyvi pastaba — įterpiama į transkriptą su laiko žyma…" style="flex:1;min-width:0;border:none;outline:none;font-size:14px;color:var(--ink-f);background:none;">
+        <span class="hint" aria-hidden="true" title="Spartos klavišas"><span class="kbd">N</span></span>
+        <button type="submit" style="height:38px;padding:0 16px;border-radius:9px;background:var(--teal);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;">+ Pastaba</button>
+      </form>
+    </div>
+
+    <!-- RIGHT: CONTEXT -->
+    <div class="col" id="ctxCol" style="padding-left:2px;">
+      <div id="ctxBody" style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="lbl" style="flex:1;">KONTEKSTAS</div>
+        <button id="ctxHide" aria-label="Slėpti kontekstą" aria-expanded="true" style="width:28px;height:28px;border:1px solid var(--border2);background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted3);cursor:pointer;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></button>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:#37504F;margin-top:8px;" id="ctxc">3 iš 3 maitina generavimo veiksmus</div>
+      <div class="card" style="margin-top:14px;padding:13px;display:flex;align-items:center;gap:11px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h12"></path></svg></div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Transkripcijos</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Transkribuotas pokalbis</div></div>
+        <div style="width:40px;height:23px;border-radius:999px;background:var(--teal);position:relative;flex-shrink:0;"><div style="position:absolute;top:3px;left:20px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);"></div></div>
+      </div>
+      <div class="card" style="margin-top:10px;padding:13px;display:flex;align-items:center;gap:11px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Gydytojo pastabos</div><div style="font-size:12px;color:var(--muted);margin-top:2px;" id="pcnt">Pastabų: 1</div></div>
+        <div style="width:40px;height:23px;border-radius:999px;background:var(--teal);position:relative;flex-shrink:0;"><div style="position:absolute;top:3px;left:20px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);"></div></div>
+      </div>
+      <div class="card" style="margin-top:10px;padding:13px;display:flex;align-items:center;gap:11px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;color:var(--teal);flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4L3 21l1.1-9A8.4 8.4 0 1 1 21 11.5z"></path></svg></div>
+        <div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Pokalbio žinutės</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">Visada įtraukiama</div></div>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;">Šaltinių perjungimas keičia tai, kas naudojama kitam generavimo veiksmui.</div>
+      </div>
+      <button id="ctxChip" aria-label="Rodyti kontekstą" style="display:none;width:100%;height:100%;min-height:120px;background:#fff;border:1px solid var(--border);border-radius:14px;flex-direction:column;align-items:center;gap:10px;padding:14px 4px;cursor:pointer;color:var(--teal);">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        <span style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted);">KONTEKSTAS</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Pre-call confirmation modal: shows WHO is being called + recording-consent, before dialing -->
+<div class="modal-ov" id="callModal" role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+  <div class="sheet">
+    <h3 id="cmTitle">Skambinti pacientui?</h3>
+    <div class="sub">Patikrinkite numerį prieš skambindami.</div>
+    <div class="callee">
+      <span class="av" id="cmAv">OP</span>
+      <div style="flex:1;min-width:0;">
+        <div class="nm" id="cmName">Ona Petraitienė</div>
+        <div class="no" id="cmMeta">48 m. · Moteris</div>
+      </div>
+    </div>
+    <!-- editable phone (number lives only here; source hint kept, identity+consent removed per ADA-262) -->
+    <div class="field-row">
+      <label for="pphone">Telefono numeris <span id="cmSrc" style="color:var(--muted2);font-weight:500;">· iš Varutis</span></label>
+      <div id="phoneWrap" class="ph-phone">
+        <span class="pic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg></span>
+        <input id="pphone" type="tel" inputmode="tel" autocomplete="tel" aria-label="Paciento telefono numeris" placeholder="+370 ___ _____" value="+370 612 34567">
+        <span class="ph-tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg></span>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-cancel" id="cmCancel">Atšaukti</button>
+      <button class="btn-call" id="cmCall"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg> Skambinti</button>
+    </div>
+  </div>
+</div>
+
+<!-- generic dialog (submit / callback / consent-withdraw / resume) -->
+<div class="modal-ov" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+  <div class="sheet" id="dlgSheet">
+    <h3 id="dlgTitle"></h3>
+    <div class="sub" id="dlgSub"></div>
+    <div id="dlgBody" style="margin:14px 0;"></div>
+    <div class="sheet-actions" id="dlgActions"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  // patients
+  // Patient list. One status per patient: Suplanuotas (orange) -> Vizitas vyksta (green) -> Aplankyta (grey).
+  // or Aplankyta (visited/older). Grouped by day/stage — competitor-informed (Nabla/Freed/Heidi).
+  // Each patient carries identity (dob/code), a phone + source (Varutis/manual), an a-priori consent flag,
+  // and a durable consultation status (cstatus) surfaced as a chip — the left rail doubles as a mini dashboard.
+  // sex/hist/allergy are structured clinical fields (from AMIS) used for the fast-decision header (ADA-262).
+  var PATS=[
+    {i:'OP',n:'Ona Petraitienė',sec:'today',st:'reg',t:'11:00',v:3,active:true,dob:'1978-03-14',code:'•••••••••42',phone:'+370 612 34567',src:'Varutis',consent:true,cstatus:null,sex:'Moteris',hist:['Arterinė hipertenzija','Riešo kanalo sindromas'],allergy:'Penicilinas'},
+    {i:'JP',n:'Jonas Petrauskas',sec:'today',st:'plan',t:'11:30',v:0,dob:'1965-09-02',code:'•••••••••17',phone:'+370 640 11223',src:'Varutis',consent:false,cstatus:null,sex:'Vyras',hist:['2 tipo cukrinis diabetas','Nutukimas'],allergy:''},
+    {i:'GR',n:'Greta Ramanauskaitė',sec:'today',st:'plan',t:'12:15',v:2,dob:'1990-01-27',code:'•••••••••88',phone:'',src:'manual',consent:true,cstatus:null,sex:'Moteris',hist:['Migrena'],allergy:''},
+    {i:'TV',n:'Tadas Vasiliauskas',sec:'visited',st:'visit',t:'09:15',v:2,dob:'1982-06-11',code:'•••••••••05',phone:'+370 611 99001',src:'Varutis',consent:true,cstatus:'submitted',sex:'Vyras',hist:['Bronchinė astma'],allergy:'Žiedadulkės'},
+    {i:'RJ',n:'Rasa Jonaitienė',sec:'visited',st:'visit',t:'08:40',v:1,dob:'1974-12-19',code:'•••••••••63',phone:'+370 655 40122',src:'Varutis',consent:true,cstatus:'noanswer',sex:'Moteris',hist:['Hipotirozė'],allergy:''},
+    {i:'MK',n:'Marius Kazlauskas',sec:'older',st:'data',t:'Tr',v:4,dob:'1959-04-08',code:'•••••••••31',phone:'+370 682 77341',src:'manual',consent:true,cstatus:'docpending',sex:'Vyras',hist:['Išeminė širdies liga','Hipertenzija'],allergy:'Aspirinas'},
+    {i:'DB',n:'Danutė Butkienė',sec:'older',st:'visit',t:'An',v:2,dob:'1968-11-30',code:'•••••••••24',phone:'+370 699 12345',src:'Varutis',consent:true,cstatus:'callback',sex:'Moteris',hist:['Osteoporozė'],allergy:''}
+  ];
+  function ageFromDob(dob){ if(!dob)return null; var t=new Date(), b=new Date(dob); var a=t.getFullYear()-b.getFullYear(); var m=t.getMonth()-b.getMonth(); if(m<0||(m===0&&t.getDate()<b.getDate()))a--; return a; }
+  var ST={plan:['Suplanuotas','st-plan'],reg:['Vizitas vyksta','st-active'],visit:['Aplankyta','st-done']};
+  // consultation-status model (durable) — label + tone class
+  var CSTAT={
+    draft:['Juodraštis','cs-neutral'], calling:['Skambinama','cs-warn'], connected:['Vyksta','cs-good'],
+    completed:['Konsultacija baigta','cs-good'], docpending:['Laukia dokumentacijos','cs-warn'],
+    savedraft:['Išsaugota kaip juodraštis','cs-info'], submitted:['Pateikta · E025','cs-good'],
+    noanswer:['Neatsakė','cs-bad'], busy:['Užimta','cs-bad'], declined:['Pacientas atmetė','cs-bad'],
+    cancelled_p:['Pacientas nutraukė','cs-bad'], cancelled_d:['Atšaukta (gydytojo)','cs-neutral'],
+    invalid:['Neteisingas numeris','cs-bad'], voicemail:['Balso paštas','cs-warn'],
+    netfail:['Ryšio klaida','cs-bad'], telfail:['Telefonijos klaida','cs-bad'],
+    recfail:['Įrašymo klaida','cs-bad'], transfail:['Transkripcijos klaida','cs-bad'], aifail:['AI klaida','cs-bad'],
+    callback:['Suplanuotas perskambinimas','cs-warn'], followup:['Reikia stebėsenos','cs-warn'],
+    closed:['Uždaryta be konsultacijos','cs-neutral']
+  };
+  function badge(st,title){var s=ST[st];return '<span class="stbadge '+s[1]+'"'+(title?' title="'+title+'"':'')+'><span class="stdot" style="background:currentColor;"></span>'+s[0]+'</span>';}
+  function cstatChip(p){ if(!p.cstatus||!CSTAT[p.cstatus])return ''; var c=CSTAT[p.cstatus]; return '<span class="cstat '+c[1]+'"><span class="cd"></span>'+c[0]+'</span>'; }
+  function badges(p){
+    if(p.sec==='visited'||p.st==='visit'||p.st==='data') return badge('visit',(p.v||0)+' vizitai iš viso');
+    return badge(p.st);
+  }
+  // clean row: avatar + name + right-aligned time (no status chips) — matches reference
+  function prow(p){return '<button class="pat" aria-current="'+(p.active?'true':'false')+'" data-id="'+p.i+'" data-n="'+p.n+'"><span class="pav">'+p.i+'</span><span class="pn" style="flex:1;min-width:0;font-size:15px;font-weight:500;color:var(--ink-s);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+p.n+'</span><span class="pt" style="font-size:12px;color:var(--muted3);flex-shrink:0;white-space:nowrap;">'+p.t+'</span></button>';}
+  function phdr(t,n){return '<div class="rt phdr" style="padding:12px 8px 6px;font-size:12px;font-weight:600;color:var(--muted2);">'+t+' · '+n+'</div>';}
+  var activePat=PATS.filter(function(p){return p.active;})[0]||PATS[0];
+  var searchQ='';
+  function matchQ(p){ if(!searchQ)return true; var toks=searchQ.toLowerCase().split(/\s+/).filter(Boolean); var hay=(p.n+' '+(p.code||'')+' '+(p.phone||'')).toLowerCase(); return toks.every(function(tk){return hay.indexOf(tk)>=0;}); } // token-split search (backlog)
+  function sel(r){var id=r.getAttribute('data-id');var p=PATS.filter(function(x){return x.i===id;})[0];if(!p)return;PATS.forEach(function(x){x.active=(x===p);});activePat=p;document.querySelectorAll('.pat').forEach(function(x){x.setAttribute('aria-current','false');});r.setAttribute('aria-current','true');var n=$('pname');if(n)n.value=p.n;syncPatient();}
+  function renderPats(){
+    var today=PATS.filter(function(p){return p.sec==='today';});
+    var older=PATS.filter(function(p){return p.sec!=='today';});
+    var h='';
+    if(today.length)h+=phdr('Šiandien',today.length)+today.map(prow).join('');
+    if(older.length)h+=phdr('Senesni',older.length)+older.map(prow).join('');
+    $('plist').innerHTML=h;
+    document.querySelectorAll('.pat').forEach(function(r){r.onclick=function(){sel(r);};});
+  }
+  // durable status setter — updates the active (or given) patient + re-renders chips
+  function setStatus(key,p){ p=p||activePat; if(!p)return; p.cstatus=key; renderPats(); }
+  // ADA-262 fast-decision header: age · gender · key history · allergy (structured data; validate with doctors)
+  // just age + gender, close to the patient name (clean, minimal)
+  function renderPatientHeader(p){
+    var el=$('pclinical'); if(!el)return; if(!p){el.textContent='';return;}
+    var age=ageFromDob(p.dob), parts=[];
+    if(age!=null) parts.push(age+' m.');
+    if(p.sex) parts.push(p.sex);
+    el.textContent=parts.join(' · ');
+  }
+  function syncPatient(){ renderPatientHeader(activePat); }
+  renderPats();
+  // pre-fill the header with the active patient
+  var _pn=$('pname'); if(_pn && activePat) _pn.value=activePat.n;
+  renderPatientHeader(activePat);
+  var railC=false, ctxC=false;
+  function applyGrid(){$('grid').style.gridTemplateColumns=(railC?'64px':'224px')+' minmax(0,1fr) minmax(0,1.12fr) '+(ctxC?'46px':'288px');}
+  $('rc').onclick=function(){railC=!railC;$('grid').classList.toggle('rail-collapsed',railC);applyGrid();};
+  $('ctxHide').onclick=function(){ctxC=true;$('ctxBody').style.display='none';$('ctxChip').style.display='flex';applyGrid();};
+  $('ctxChip').onclick=function(){ctxC=false;$('ctxBody').style.display='flex';$('ctxChip').style.display='none';applyGrid();};
+  var _addP=$('addP'); if(_addP){_addP.onclick=function(){var t=new Date(),hh=('0'+t.getHours()).slice(-2),mm=('0'+t.getMinutes()).slice(-2);PATS.forEach(function(p){p.active=false;});PATS.unshift({i:'NP',n:'Naujas pacientas',sec:'today',st:'plan',t:hh+':'+mm,v:0,active:true});renderPats();};}
+  // live clock
+  var sec=0, recording=false, clockTimer=null, streamTimer=null;
+  function fmt(x){var m=Math.floor(x/60),s=x%60;return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;}
+  function tickClock(){sec++;var t=fmt(sec);var c=$('clk');if(c)c.textContent=t;var c2=$('clk2');if(c2)c2.textContent=t;var rl=$('recLen');if(rl)rl.textContent=t;}
+  function stamp(){return fmt(sec);}
+  // notes: co-located, timestamped, into transcript + context count
+  var pc=0;$('pcnt').textContent='Pastabų: 0';
+  // document tabs — E025 clickable
+  function showTab(t){
+    var tabs={E025:'tabE025',Trans:'tabTrans',Anam:'tabAnam'};
+    Object.keys(tabs).forEach(function(k){var b=$(tabs[k]);if(!b)return;var on=(k===t);b.setAttribute('aria-selected',on?'true':'false');b.tabIndex=on?0:-1;});
+    $('panel-E025').hidden=(t!=='E025'); $('panel-E025').style.display=(t==='E025')?'block':'none';
+    $('panel-Trans').hidden=(t!=='Trans'); $('panel-Trans').style.display=(t==='Trans')?'flex':'none';
+    var pa=$('panel-Anam'); if(pa){pa.hidden=(t!=='Anam'); pa.style.display=(t==='Anam')?'block':'none';}
+    $('nf').style.display=(t==='Trans')?'flex':'none';   // objektyvi pastaba tik transkripcijoje
+  }
+  function selectDoc(e){ showTab(e?'E025':'Trans'); }
+  $('tabE025').onclick=function(){showTab('E025');};
+  $('tabTrans').onclick=function(){showTab('Trans');};
+  var _ta=$('tabAnam'); if(_ta)_ta.onclick=function(){showTab('Anam');};
+  // ARIA tabs: arrow-key navigation (WAI-ARIA Tabs pattern)
+  (function(){
+    var order=['tabTrans','tabE025','tabAnam'], keys=['Trans','E025','Anam'];
+    document.querySelector('.tabbar').addEventListener('keydown',function(e){
+      var i=order.indexOf(document.activeElement.id); if(i<0)return;
+      var n=-1;
+      if(e.key==='ArrowRight'||e.key==='ArrowDown')n=(i+1)%order.length;
+      else if(e.key==='ArrowLeft'||e.key==='ArrowUp')n=(i-1+order.length)%order.length;
+      else if(e.key==='Home')n=0; else if(e.key==='End')n=order.length-1;
+      if(n<0)return; e.preventDefault(); showTab(keys[n]); $(order[n]).focus();
+    });
+  })();
+  // ---- Dokumentai → chronologinė paciento istorijos laiko juosta (struktūriniai metaduomenys, ne AI) ----
+  (function(){
+    var SRC={
+      E025:{label:'E025',color:'#007682'}, E003s:{label:'E003s',color:'#C77700'},
+      Laboratorija:{label:'Laboratorija',color:'#2E7D46'}, Siuntimai:{label:'Siuntimai',color:'#0E9AA7'},
+      E027ats:{label:'E027ats',color:'#6D5AE6'}
+    };
+    var ORDER=['E025','E003s','Laboratorija','Siuntimai','E027ats'];
+    // longitudinal history — structured fields (diagnosis / icd / medication / doctor come from coded data, not AI)
+    var EVENTS=[
+      {date:'2026-04-17',src:'Siuntimai',title:'Neurologo siuntimas',summary:'Nuolatinis dešinės rankos tirpimas; rekomenduojama ENMG.',doctor:'Neurologas',dx:'Riešo kanalo sindromas',icd:'G56.0',med:'Ibuprofenas'},
+      {date:'2026-02-03',src:'Laboratorija',title:'Kraujo tyrimai',summary:'Vitamino D trūkumas; kiti rodikliai normos ribose.',doctor:'Laboratorija',dx:'Vitamino D stoka',icd:'E55.9',med:'Vitaminas D3'},
+      {date:'2025-11-20',src:'E025',title:'Kardiologo konsultacija',summary:'AKS 128/80; tęsti ramiprilį, būklė stabili.',doctor:'Kardiologas',dx:'Arterinė hipertenzija',icd:'I10',med:'Ramiprilis 5 mg'},
+      {date:'2025-09-26',src:'Siuntimai',title:'Neurologo siuntimas',summary:'Nuolatinis juosmens skausmas; rekomenduojama MRT.',doctor:'Neurologas',dx:'Juosmens skausmas',icd:'M54.10',med:''},
+      {date:'2025-08-03',src:'E025',title:'Šeimos gydytojo vizitas',summary:'Viršutinių kvėpavimo takų infekcija; palaikomasis gydymas, be antibiotikų.',doctor:'Šeimos gydytojas',dx:'Ūminė VKTI',icd:'J06.9',med:''},
+      {date:'2024-10-08',src:'E027ats',title:'Medicininė pažyma',summary:'Pažyma vairuotojo teisėms; sveikatos būklė tinkama.',doctor:'Šeimos gydytojas',dx:'Sveikatos patikra',icd:'Z02.4',med:''},
+      {date:'2024-05-14',src:'E003s',title:'Stacionaro išrašas',summary:'Trumpalaikis stebėjimas dėl galvos svaigimo; ūminės patologijos nenustatyta.',doctor:'Vidaus ligų gydytojas',dx:'Galvos svaigimas',icd:'R42',med:''}
+    ];
+    var activeSrc='all', sortNew=true, query='';
+    function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+    function matchQ(e){ if(!query)return true; var toks=query.toLowerCase().split(/\s+/).filter(Boolean); var hay=(e.date+' '+e.title+' '+e.summary+' '+e.dx+' '+e.icd+' '+e.med+' '+e.doctor+' '+SRC[e.src].label).toLowerCase(); return toks.every(function(t){return hay.indexOf(t)>=0;}); }
+    function baseMatch(e){ return matchQ(e); }                    // count ignores source filter
+    function filtered(){ return EVENTS.filter(function(e){ return (activeSrc==='all'||e.src===activeSrc)&&matchQ(e); }); }
+    function chipHtml(key,label,color,count,on){
+      var st = on ? ('background:'+color+'0F;border-color:'+color+';color:'+color+';') : '';
+      var dot = color ? '<span class="cdot" style="background:'+color+';"></span>' : '';
+      return '<button type="button" class="docsrc'+(on?' on':'')+'" data-k="'+key+'" aria-pressed="'+on+'"'+(st?(' style="'+st+'"'):'')+'>'+dot+label+' <span class="cnt">('+count+')</span></button>';
+    }
+    function renderChips(){
+      var sc=$('docSources'); if(!sc)return;
+      var searching=!!query;
+      var allCount=EVENTS.filter(baseMatch).length;
+      var h=chipHtml('all','Visi','',allCount,activeSrc==='all');
+      ORDER.forEach(function(k){
+        var c=EVENTS.filter(function(e){return e.src===k&&baseMatch(e);}).length;
+        if(searching&&c===0&&activeSrc!==k) return;               // hide zero-match sources during search
+        h+=chipHtml(k,SRC[k].label,SRC[k].color,c,activeSrc===k);
+      });
+      sc.innerHTML=h;
+      Array.prototype.forEach.call(sc.querySelectorAll('.docsrc'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-k'); activeSrc=(k==='all')?'all':(activeSrc===k?'all':k); render(); }; });
+    }
+    function metaBit(label,val){ return val ? '<span><span class="ml">'+label+'</span>'+esc(val)+'</span>' : ''; }
+    function card(e){
+      var col=SRC[e.src].color;
+      var icd = e.icd ? '<span class="hc-icd">TLK-10 '+esc(e.icd)+'</span>' : '';
+      var meta = metaBit('Gydytojas',e.doctor)+metaBit('Vaistai',e.med);
+      return '<button class="hcard" style="border-left-color:'+col+';" aria-label="'+esc(e.title+', '+e.dx+', '+e.date)+'">'+
+        '<div class="hc-top"><span class="hc-tag" style="color:'+col+';border-color:'+col+'55;background:'+col+'0F;">'+SRC[e.src].label+'</span><span class="hc-title">'+esc(e.title)+'</span><span class="hc-date">'+e.date+'</span></div>'+
+        '<div class="hc-dx"><span><span class="dl">Diagnozė</span> <b>'+esc(e.dx)+'</b></span>'+icd+'</div>'+
+        (e.summary?'<div class="hc-sum">'+esc(e.summary)+'</div>':'')+
+        (meta?'<div class="hc-meta">'+meta+'</div>':'')+
+      '</button>';
+    }
+    function render(){
+      renderChips();
+      var list=filtered().slice().sort(function(a,b){ return sortNew ? (a.date<b.date?1:-1) : (a.date>b.date?1:-1); });
+      $('docCount').textContent='Rodoma '+list.length+' istorijos įrašų';
+      var tl=$('docTimeline');
+      if(!list.length){ tl.innerHTML='<div class="docempty">Nerasta istorijos įrašų.<br>Pabandykite kitą diagnozę, vaistą ar TLK-10 kodą.</div>'; return; }
+      var h='', curYear=null;
+      list.forEach(function(e){
+        var y=e.date.slice(0,4);
+        if(y!==curYear){ if(curYear!==null)h+='</div>'; h+='<div class="tyear">'+y+'</div><div class="tlg">'; curYear=y; }
+        h+='<div class="tli"><span class="tdot" style="color:'+SRC[e.src].color+';"></span>'+card(e)+'</div>';
+      });
+      if(curYear!==null)h+='</div>';
+      tl.innerHTML=h;
+      Array.prototype.forEach.call(tl.querySelectorAll('.hcard'),function(b){ b.onclick=function(){ showToast('Atidaromas dokumentas (demonstracija)'); }; });
+    }
+    var ds=$('docSearch'); if(ds) ds.addEventListener('input',function(){ query=ds.value.trim(); render(); });
+    var so=$('docSort'); if(so) so.addEventListener('change',function(){ sortNew=(so.value==='new'); render(); });
+    render();
+  })();
+  // E025 collapsible sections
+  document.querySelectorAll('.ehead').forEach(function(b){b.onclick=function(){var body=b.nextElementSibling;var open=body.style.display!=='none';body.style.display=open?'none':'';b.querySelector('.ecaret').style.transform=open?'rotate(180deg)':'';};});
+  var anchorEl=null;
+  function anchorTs(el){var t=el&&el.querySelector('.ts');return t?t.textContent:stamp();}
+  function resetNote(){anchorEl=null;$('ni').value='';$('ni').placeholder='Objektyvi pastaba — įterpiama į transkriptą su laiko žyma…';}
+  function addNote(v,at){
+    var ts=at?anchorTs(at):stamp();
+    var d=document.createElement('div');d.className='note new';
+    d.innerHTML='<span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg></span><div><div class="lab">GYDYTOJO PASTABA · '+ts+(at?' · prie eilutės':'')+'</div><div class="tx"></div></div>';
+    d.querySelector('.tx').textContent=v;
+    if(at&&at.parentNode===$('stream')){$('stream').insertBefore(d,at.nextSibling);}
+    else {$('stream').appendChild(d);var sc=$('scrollArea');sc.scrollTop=sc.scrollHeight;}
+    pc++;$('pcnt').textContent='Pastabų: '+pc;
+  }
+  $('nf').addEventListener('submit',function(e){e.preventDefault();var v=$('ni').value.trim();if(!v)return;addNote(v,anchorEl);resetNote();});
+  // per-line anchors: attach an objective note to a specific transcript line
+  function attachAnchor(l){
+    var b=document.createElement('button');b.type='button';b.className='anc';b.setAttribute('aria-label','Pridėti pastabą prie šios eilutės');b.textContent='+';
+    b.onclick=function(){anchorEl=l;$('ni').placeholder='Pastaba prie eilutės '+anchorTs(l)+'…';$('ni').focus();};
+    l.appendChild(b);
+  }
+  Array.prototype.forEach.call($('stream').querySelectorAll('.tl'),attachAnchor);
+  // keyboard shortcut: N focuses the objective-note field (switches to Transkripcija first)
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='n'&&e.key!=='N')return;
+    var t=e.target,tag=t&&t.tagName;
+    if(tag==='INPUT'||tag==='TEXTAREA'||(t&&t.isContentEditable))return;
+    if($('tabTrans').getAttribute('aria-selected')!=='true')selectDoc(false);
+    e.preventDefault();$('ni').focus();
+  });
+  // Esc clears an in-progress anchor/note
+  $('ni').addEventListener('keydown',function(e){if(e.key==='Escape'){resetNote();$('ni').blur();}});
+
+  // ---- live transcription streaming ----
+  // Seed the queue from the pre-authored transcript, then clear for the idle state.
+  var SEED=[];
+  Array.prototype.forEach.call($('stream').children,function(c){
+    if(c.classList.contains('note')){SEED.push(['note',c.querySelector('.tx').textContent]);}
+    else if(c.classList.contains('tl')){SEED.push([c.querySelector('.who').classList.contains('d')?'d':'p',c.children[2].textContent]);}
+  });
+  $('stream').innerHTML='';
+  var queue=SEED.slice();
+  function revealStream(){ $('streamCard').style.display=''; var eh=$('emptyHint'); if(eh)eh.style.display='none'; var rl=$('recLen'); if(rl)rl.textContent=fmt(sec); if(callState==='connected')showListening(); }
+  function addLine(who,txt){
+    revealStream(); capturedLines++;
+    var l=document.createElement('div');l.className='tl new';
+    l.innerHTML='<span class="ts">'+stamp()+'</span><span class="who '+who+'">'+(who==='d'?'Gydytojas':'Pacientė')+'</span><span></span>';
+    l.children[2].textContent=txt; attachAnchor(l); $('stream').appendChild(l);
+    var sc=$('scrollArea'); sc.scrollTop=sc.scrollHeight;
+  }
+  // interim (partial ASR) line that finalizes — mirrors live STT apps (ElevenLabs/Otter/Nabla)
+  function addInterim(who){
+    revealStream();
+    var l=document.createElement('div');l.className='tl interim';l.setAttribute('aria-hidden','true');
+    l.innerHTML='<span class="ts">'+stamp()+'</span><span class="who '+who+'">'+(who==='d'?'Gydytojas':'Pacientė')+'</span><span><span class="caret"></span></span>';
+    $('stream').appendChild(l); var sc=$('scrollArea'); sc.scrollTop=sc.scrollHeight; return l;
+  }
+  function finalizeInterim(l,txt){
+    if(!l||!l.parentNode)return; l.className='tl new'; l.removeAttribute('aria-hidden');
+    l.children[2].textContent=txt; attachAnchor(l); capturedLines++;
+    var sc=$('scrollArea'); sc.scrollTop=sc.scrollHeight;
+  }
+  function startStream(){ if(streamTimer)return; streamTimer=setInterval(function(){
+    if(!queue.length){clearInterval(streamTimer);streamTimer=null;return;}
+    var q=queue.shift();
+    if(q[0]==='note'){revealStream();addNote(q[1],null);return;}
+    var l=addInterim(q[0]);
+    setTimeout(function(){ finalizeInterim(l,q[1]); },1100);   // partial → final
+  },3000); }
+
+  // ---- Call + transcription lifecycle (transcription is AUTOMATIC, coupled to the call) ----
+  // Ready -> Connecting -> Ringing -> Connected (auto record+transcribe) -> End call -> Stopping -> Finalized -> Generate E025
+  var scribeBtn=$('scribeBtn'), callBtn=$('callBtn'), generated=false, callState='ready';
+  // consultation workflow state (added): failure sim flags, timers, captured-content tracking, live-suggestion accept state
+  var sim={decline:false,busy:false,fail:false,noanswer:false,genFail:false,finalFail:false,drop:false,invalid:false,voicemail:false,telfail:false,recfail:false,transfail:false,withdraw:false,saveFail:false,noconsent:false};
+  var callTimer1=null, callTimer2=null, dropped=false, capturedLines=0, accepted={};
+  var recorded=true, paused=false, savedDraft=false, consentAt='';   // consent-driven recording, pause state, doc-save state, consent timestamp
+  var SHOW_LIVE_AI=false;   // ADA-262: real-time AI chips + live suggestions hidden (modular; flip to restore)
+  var SUGG={
+    'eta-anamneze':'Pacientė skundžiasi dešinio nykščio srities tirpimu ~2 sav., atsirandančiu ištiesus ranką ir sukant riešą. Skausmas kartais plinta iki alkūnės, ryškesnis naktį. Silpnumo nejaučia. Nuo skausmo vartoja ibuprofeną pagal poreikį.',
+    'eta-diagnoze':'Įtariamas dešinės rankos riešo kanalo sindromas (G56.0).',
+    'eta-bukle':'Dešinio riešo/nykščio palpacija jautri. Teigiamas Finkelšteino testas. Raumenų jėga išsaugota, neurologinio deficito nenustatyta.',
+    'eta-planas':'Skirtas riešo įtvaras nakčiai. Planuojama ENMG. Neurologo konsultacija dėl tirpimo priežasties (siuntimas išduotas).'
+  };
+  var PHONE='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.6A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.4-1.2a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"></path></svg>';
+  var MIC='<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"></path></svg>';
+  function callBtnSet(m){
+    if(m==='end'){callBtn.style.background='var(--red)';callBtn.innerHTML='<span style="width:9px;height:9px;border-radius:50%;background:#fff;"></span> Baigti skambutį';}
+    else if(m==='wait'){callBtn.style.background='#B0894F';callBtn.innerHTML='<span class="spin-s"></span> Skambinama…';}
+    else{callBtn.style.background='#53B65A';callBtn.innerHTML=PHONE+' Skambinti pacientui';}
+    updateCallGate();
+  }
+  // status-card style: label + Pradėti/Stabdyti action; reflects recording whether started via Pradėti or Call
+  function scribeBtnSet(rec){
+    var card=$('scribeCard'), ic=$('scribeIcon'), lb=$('scribeLabel');
+    if(rec){
+      if(card)card.style.background='#fff';
+      if(ic)ic.innerHTML='<span style="width:10px;height:10px;border-radius:50%;background:var(--red);display:inline-block;animation:recBlink 1.4s ease-in-out infinite;"></span>';
+      if(lb)lb.textContent='Transkribuojama…';
+      scribeBtn.innerHTML='<span style="width:11px;height:11px;border-radius:3px;background:var(--teal);display:inline-block;flex-shrink:0;"></span> Stabdyti';
+    } else {
+      if(card)card.style.background='var(--teal-tint)';
+      if(ic)ic.innerHTML=MIC;
+      if(lb)lb.textContent='Pasiruošę transkribuoti';
+      scribeBtn.innerHTML='Pradėti';
+    }
+  }
+  function statusCard(txt,cancelable){ $('idlePrompt').style.display='none'; var rc=$('recCard'); rc.style.display='block'; rc.style.borderColor='var(--border)'; rc.innerHTML='<div style="display:flex;align-items:center;gap:10px;"><span class="spin-t"></span><div style="font-size:14px;font-weight:600;color:var(--ink-s);flex:1;">'+txt+'</div>'+(cancelable?'<button id="cancelCallBtn" class="tctl">Atšaukti</button>':'')+'</div>'; var cb=$('cancelCallBtn'); if(cb) cb.onclick=cancelCall; }
+  // graceful call-failure card (declined / busy / no answer / connection failed) — no transcript is produced
+  function clockNow(){ var t=new Date(); return ('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2); }
+  function failCard(title,sub,statusKey){
+    if(statusKey) setStatus(statusKey);   // persist the outcome on the patient row (durable status)
+    $('idlePrompt').style.display='none'; var rc=$('recCard'); rc.style.display='block'; rc.style.borderColor='#F3C7C7';
+    // graceful failure (declined / busy / no answer / connection failed) — attempt is LOGGED, recovery actions offered
+    rc.innerHTML=''+
+      '<div style="display:flex;align-items:flex-start;gap:10px;">'+
+        '<span style="width:20px;height:20px;border-radius:50%;background:#FDECEC;color:var(--red);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;margin-top:1px;">!</span>'+
+        '<div style="flex:1;min-width:0;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">'+title+'</div><div style="font-size:12px;color:var(--muted3);margin-top:1px;">'+sub+'</div></div>'+
+      '</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">'+
+        '<button id="recallBtn" class="tctl" style="background:var(--teal);border-color:var(--teal);color:#fff;">Skambinti dar kartą</button>'+
+        '<button id="otherNumBtn" class="tctl">Kitas numeris</button>'+
+        '<button id="reschedBtn" class="tctl">Perkelti vizitą</button>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted3);">'+
+        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 2"></path><circle cx="12" cy="12" r="9"></circle></svg>'+
+        '<span>Bandymas užfiksuotas · '+clockNow()+' · '+title.toLowerCase()+'</span>'+
+      '</div>';
+    var rb=$('recallBtn'); if(rb) rb.onclick=function(){ openCallModal(); };
+    var on=$('otherNumBtn'); if(on) on.onclick=function(){ rc.style.display='none'; $('idlePrompt').style.display=''; callState='ready'; callBtnSet('idle'); pphone.focus(); try{pphone.setSelectionRange(pphone.value.length,pphone.value.length);}catch(e){} showToast('Įveskite kitą numerį'); };
+    var rs=$('reschedBtn'); if(rs) rs.onclick=function(){ openCallbackDialog(); };
+  }
+  // real callback scheduling — sets Callback Scheduled status
+  function openCallbackDialog(){
+    var d2=new Date(Date.now()+864e5); var def=d2.toISOString().slice(0,10);
+    openDialog('Perkelti / suplanuoti perskambinimą','Suplanuokite perskambinimą pacientui '+((activePat&&activePat.n)||''),
+      '<div class="field-row"><label>Data</label><input type="date" id="cbDate" value="'+def+'"></div>'+
+      '<div class="field-row"><label>Laikas</label><input type="time" id="cbTime" value="09:30"></div>'+
+      '<div class="field-row"><label>Pastaba (nebūtina)</label><input type="text" id="cbNote" placeholder="pvz., perskambinti dėl tyrimų"></div>',
+      [['Atšaukti','ghost',closeDialog],['Suplanuoti','solid',function(){ var dt=$('cbDate').value,tm=$('cbTime').value; setStatus('callback'); closeDialog(); var rc=$('recCard'); if(rc)rc.style.display='none'; $('idlePrompt').style.display=''; callState='ready'; callBtnSet('idle'); showToast('Perskambinimas suplanuotas · '+dt+' '+tm); }]]);
+  }
+  function qmetersHtml(){
+    // audio + network quality (F4 flags 8 kHz narrowband risk) — surfaced live
+    return '<div style="display:flex;align-items:center;gap:14px;margin-top:10px;">'+
+      '<span class="qmeter" id="qAudio" title="Garso kokybė"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path></svg> Garsas <span class="qbars q-mid"><i></i><i></i><i></i><i></i></span></span>'+
+      '<span class="qmeter" id="qNet" title="Ryšio kokybė"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"></path></svg> Ryšys <span class="qbars q-good"><i></i><i></i><i></i><i></i></span></span>'+
+      '</div>';
+  }
+  function recCardLive(){
+    $('recCard').style.borderColor= recorded?'#F3C7C7':'var(--border)';
+    // ADA-262: consent is NOT surfaced to the doctor. Recorded state shows only recording status.
+    var statusLine = recorded
+      ? ''
+      : '<div style="display:flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;color:var(--amber);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2l20 20M9 5a3 3 0 0 1 6 0v5M15 11.4A3 3 0 0 1 9 11V9"></path></svg><span>Įrašymas išjungtas · dokumentuojama rankiniu būdu</span></div>';
+    var head = recorded
+      ? '<span class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>'
+      : '<span style="width:9px;height:9px;border-radius:50%;background:var(--muted2);flex-shrink:0;"></span>';
+    $('recCard').innerHTML=''+
+      '<div style="display:flex;align-items:center;gap:12px;">'+ head +
+        '<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">'+(recorded?'Įrašoma':'Skambutis vyksta')+'</div><div style="font-size:12px;color:var(--muted3);">Tiesiogiai · klausoma pokalbio…</div></div>'+
+        '<div style="display:flex;align-items:center;gap:8px;"><button id="pauseBtn" class="tctl" title="Pristabdyti">⏸ Pauzė</button><span style="font-size:13px;color:var(--muted3);font-variant-numeric:tabular-nums;" id="clk">'+fmt(sec)+'</span></div>'+
+      '</div>'+
+      statusLine +
+      '<div id="emptyHint" style="margin-top:10px;padding:16px;border:1px dashed var(--border2);border-radius:10px;text-align:center;font-size:13px;color:var(--muted3);">Gydytojo ir paciento kalba pasirodys žemiau.</div>'+
+      '<div id="aichips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;"></div>';
+    var pb=$('pauseBtn'); if(pb) pb.onclick=togglePause;
+  }
+  // pause / resume recording + transcription
+  function togglePause(){
+    if(callState!=='connected')return;
+    paused=!paused;
+    if(paused){ if(streamTimer){clearInterval(streamTimer);streamTimer=null;} if(clockTimer){clearInterval(clockTimer);clockTimer=null;} hideListening();
+      var rc=$('recCard'); rc.style.borderColor='var(--border)';
+      rc.querySelector('div>div>div').textContent='Pristabdyta';
+      var pb=$('pauseBtn'); if(pb)pb.innerHTML='▶ Tęsti';
+      var w=rc.querySelector('.wave'); if(w)w.style.visibility='hidden';
+      showToast('Įrašymas pristabdytas');
+    } else { recCardLive(); revealStream(); clockTimer=setInterval(tickClock,1000); startStream(); showToast('Įrašymas tęsiamas'); }
+  }
+  // "Klausoma…" indicator at the bottom of the transcript while recording (Heidi "Listening")
+  function showListening(){ var s=$('streamCard'); if(!s||$('listening'))return; var d=document.createElement('div'); d.id='listening'; d.className='listening'; d.setAttribute('aria-hidden','true'); d.innerHTML='<span class="ld"><i></i><i></i><i></i></span> Klausoma…'; s.appendChild(d); }
+  function hideListening(){ var l=$('listening'); if(l)l.remove(); }
+  function recCardFinal(){
+    $('recCard').style.borderColor='var(--border)';
+    $('recCard').innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="width:20px;height:20px;border-radius:50%;background:#E6F4EA;color:#166534;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">✓</span><div style="flex:1;min-width:120px;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Konsultacija baigta</div><div style="font-size:12px;color:var(--muted3);">Transkriptas užbaigtas · '+fmt(sec)+'</div></div><div style="display:flex;gap:6px;"><button class="tctl">Kopijuoti</button><button class="tctl">Atsisiųsti</button><button class="tctl">Ieškoti</button></div></div><button id="genBtn" style="margin-top:12px;width:100%;height:42px;background:var(--teal);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Generuoti E025</button>';
+    var gb=$('genBtn'); if(gb) gb.onclick=function(){ generateE025(); };
+  }
+  function resetForNewCall(){
+    sec=0; generated=false; capturedLines=0; dropped=false; accepted={};
+    queue=SEED.slice(); $('stream').innerHTML=''; $('streamCard').style.display='none'; hideListening();
+    // clear any previously generated / accepted E025 content + live-suggestion strips
+    ['eta-anamneze','eta-diagnoze','eta-bukle','eta-planas'].forEach(function(id){ var t=$(id); if(t){ t.value=''; t.style.background=''; } });
+    Array.prototype.forEach.call(document.querySelectorAll('#panel-E025 .ai-sugg'),function(n){ n.remove(); });
+  }
+  function scheduleChips(){
+    [['✨ Simptomai aptikti','eta-anamneze'],['✨ Galima diagnozė','eta-diagnoze'],['✨ Vaistai','eta-planas'],['✨ Matavimai',null]].forEach(function(c,i){ setTimeout(function(){ if(callState!=='connected')return; var b=$('aichips'); if(!b)return; var s=document.createElement('button'); s.type='button'; s.textContent=c[0]; s.title='Atidaryti E025'; s.style.cssText='font:inherit;font-size:11px;font-weight:600;color:var(--teal);background:var(--teal-tint);border:1px solid var(--teal-bd);border-radius:999px;padding:3px 9px;cursor:pointer;animation:noteIn .3s ease-out;'; s.onclick=function(){ showTab('E025'); var t=c[1]&&$(c[1]); if(t){ var sec=t.closest('.esec'); if(sec) sec.scrollIntoView({behavior:'smooth',block:'center'}); } }; b.appendChild(s); }, 3200+i*2600); });
+  }
+  function showToast(msg){ var t=$('toast'); if(!t){t=document.createElement('div');t.id='toast';t.setAttribute('role','status');t.setAttribute('aria-live','polite');t.style.cssText='position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);background:var(--ink-s);color:#fff;font-size:14px;font-weight:500;padding:11px 18px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;transition:opacity .2s,transform .2s;z-index:50;';document.body.appendChild(t);} t.textContent='✓ '+msg; requestAnimationFrame(function(){t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';}); clearTimeout(t._h); t._h=setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(10px)';},3200); }
+  function clearCallTimers(){ if(callTimer1){clearTimeout(callTimer1);callTimer1=null;} if(callTimer2){clearTimeout(callTimer2);callTimer2=null;} }
+  function startCall(rec){
+    if(callState!=='ready'&&callState!=='ended')return;
+    if(!phoneValid)return;  // need a valid patient phone number to place the call
+    recorded=(rec!==false); paused=false; consentAt='';
+    resetForNewCall(); callState='connecting'; setStatus('calling'); selectDoc(false); callBtnSet('wait');
+    var _callee=(($('pname').value||'').trim()||'pacientui')+' · '+pphone.value;
+    statusCard('Jungiamasi… '+_callee, true);
+    // invalid number / telephony provider failure resolve during Connecting
+    if(sim.invalid){ sim.invalid=false; callTimer1=setTimeout(function(){ if(callState!=='connecting')return; callFailed('Neteisingas numeris','Numeris nepasiekiamas arba neegzistuoja. Patikrinkite numerį.','invalid'); },1400); return; }
+    if(sim.telfail){ sim.telfail=false; callTimer1=setTimeout(function(){ if(callState!=='connecting')return; callFailed('Telefonijos paslauga nepasiekiama','Nepavyko pasiekti skambučių centro. Bandykite vėliau arba praneškite IT.','telfail'); },1400); return; }
+    if(sim.fail){ sim.fail=false; callTimer1=setTimeout(function(){ if(callState!=='connecting')return; callFailed('Nepavyko prisijungti','Ryšio klaida. Patikrinkite tinklą ir bandykite dar kartą.','netfail'); },1400); return; }
+    callTimer1=setTimeout(function(){ if(callState!=='connecting')return; callState='ringing'; statusCard('Skambinama: '+_callee, true);
+      if(sim.busy){ sim.busy=false; callTimer2=setTimeout(function(){ if(callState!=='ringing')return; callFailed('Užimta','Pacientas šiuo metu kalba telefonu. Bandykite vėliau.','busy'); },1500); return; }
+      if(sim.decline){ sim.decline=false; callTimer2=setTimeout(function(){ if(callState!=='ringing')return; callFailed('Pacientas atmetė skambutį','Skambutis nebuvo priimtas.','declined'); },1800); return; }
+      if(sim.voicemail){ sim.voicemail=false; callTimer2=setTimeout(function(){ if(callState!=='ringing')return; callFailed('Įsijungė balso paštas','Pacientas neatsiliepė; įsijungė balso paštas. Įrašymas nepradėtas.','voicemail'); },3200); return; }
+      if(sim.noanswer){ sim.noanswer=false; callTimer2=setTimeout(function(){ if(callState!=='ringing')return; callFailed('Nėra atsakymo','Pacientas neatsiliepė. Skambutis nutrauktas.','noanswer'); },5000); return; } // organic ring timeout
+      callTimer2=setTimeout(function(){ if(callState!=='ringing')return; connected(); },1600);
+    },1300);
+  }
+  function cancelCall(){ // graceful cancel during Connecting/Ringing — no transcript
+    if(callState!=='connecting'&&callState!=='ringing')return;
+    clearCallTimers(); callState='ready'; setStatus('cancelled_d'); callBtnSet('idle'); resetForNewCall();
+    $('recCard').style.display='none'; $('idlePrompt').style.display=''; showToast('Skambutis atšauktas');
+  }
+  function callFailed(title,sub,statusKey){ // graceful "cannot be connected" — no transcript
+    clearCallTimers(); callState='ready'; recording=false; callBtnSet('idle'); scribeBtnSet(false);
+    resetForNewCall(); failCard(title,sub,statusKey);
+  }
+  function connected(){
+    // CALL path: patient answered — call is live, but recording has NOT started yet
+    callState='connected'; recording=false; setStatus('connected'); callBtnSet('end'); scribeBtnSet(false);
+    $('idlePrompt').style.display='none'; $('recCard').style.display='block';
+    if(recorded){
+      // brief connect step: doctor is bridged to the patient after IVR handling (consent handled
+      // automatically on the IVR/registration side and is NOT surfaced to the doctor — ADA-262)
+      consentCard();
+      callTimer2=setTimeout(function(){ if(callState!=='connected')return;
+        if(sim.noconsent){ sim.noconsent=false; consentDeclined(); return; }
+        consentAt=clockNow(); beginRecording(true);
+      }, 2600);
+    } else {
+      beginRecording(true);
+    }
+  }
+  // SCRIBE path (in-person "Pradėti"): start transcribing immediately — no phone-connect/IVR step
+  function startScribe(){
+    if(callState!=='ready'&&callState!=='ended')return;
+    recorded=true; paused=false; consentAt='';
+    resetForNewCall(); callState='connected'; setStatus('connected'); selectDoc(false);
+    $('idlePrompt').style.display='none'; $('recCard').style.display='block';
+    beginRecording(false);
+  }
+  // IVR consent request — call connected, announcing recording, awaiting patient consent (no recording yet)
+  function stepDot(state,label){
+    if(state==='done') return '<span style="display:inline-flex;align-items:center;gap:5px;color:#2E7D46;font-weight:600;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>'+label+'</span>';
+    if(state==='active') return '<span style="display:inline-flex;align-items:center;gap:5px;color:var(--teal);font-weight:700;"><span style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:recBlink 1.2s ease-in-out infinite;"></span>'+label+'</span>';
+    return '<span style="display:inline-flex;align-items:center;gap:5px;color:var(--muted2);"><span style="width:7px;height:7px;border-radius:50%;background:#D5DBE3;"></span>'+label+'</span>';
+  }
+  function stepArr(){ return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#C4CAD3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M9 6l6 6-6 6"></path></svg>'; }
+  // Doctor is NOT yet bridged to the patient — the robot (IVR) is asking for consent; patient can't hear the doctor.
+  function consentCard(){
+    var rc=$('recCard'); rc.style.display='block'; rc.style.borderColor='var(--border)';
+    rc.innerHTML=''+
+      '<div style="display:flex;align-items:center;gap:12px;">'+
+        '<span class="spin-t"></span>'+
+        '<div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Jungiamasi prie paciento</div><div style="font-size:12px;color:var(--muted3);">Palaukite — netrukus galėsite kalbėti.</div></div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11px;flex-wrap:wrap;">'+
+        stepDot('done','Skambinama')+stepArr()+stepDot('active','Jungiamasi')+stepArr()+stepDot('idle','Prijungta')+stepArr()+stepDot('idle','Kalbėkite')+
+      '</div>'+
+      '<div style="margin-top:12px;padding:12px 14px;border:1px solid #F3C7C7;background:#FDF6F6;border-radius:10px;display:flex;align-items:flex-start;gap:9px;">'+
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="M2 2l20 20M9 5a3 3 0 0 1 6 0v5M15 11.4A3 3 0 0 1 9 11V9M17 16.95A7 7 0 0 1 5 12v-1M12 18.9V22"></path></svg>'+
+        '<div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#B42318;">Jūs dar neprijungtas — pacientas jūsų negirdi</div><div style="font-size:12px;color:var(--muted3);margin-top:1px;">Mikrofonas neaktyvus. Būsite prijungtas netrukus.</div></div>'+
+      '</div>';
+  }
+  // strong "you're bridged, you may speak" cue the moment consent is granted + recording starts
+  function flashConnected(){
+    var rc=$('recCard'); if(!rc)return;
+    var b=document.createElement('div');
+    b.style.cssText='display:flex;align-items:center;gap:9px;background:#E4F4E9;border:1px solid #BFE3CB;border-radius:10px;padding:11px 13px;margin-bottom:10px;animation:noteIn .3s ease-out;';
+    b.innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2E7D46" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M11 5 6 9H2v6h4l5 4V5z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"></path></svg><div style="font-size:13px;font-weight:700;color:#2E7D46;">Prijungta — pacientas jus girdi · galite kalbėti</div>';
+    rc.insertBefore(b,rc.firstChild);
+    setTimeout(function(){ if(b.parentNode)b.remove(); },4500);
+    showToast('Prijungta — galite kalbėti');
+  }
+  // patient did not consent to recording (via IVR) — continue unrecorded / end
+  function consentDeclined(){
+    var rc=$('recCard'); rc.style.display='block'; rc.style.borderColor='#F3C7C7';
+    rc.innerHTML='<div style="display:flex;align-items:flex-start;gap:10px;"><span style="width:20px;height:20px;border-radius:50%;background:#FDECEC;color:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">!</span><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Pacientas nesutiko įrašyti</div><div style="font-size:12px;color:var(--muted3);margin-top:1px;">Skambutis tęsiasi. Įrašymas ir transkripcija nevykdomi — dokumentuojama rankiniu būdu.</div></div></div><div style="display:flex;gap:6px;margin-top:12px;"><button id="ncManual" class="tctl" style="background:var(--teal);border-color:var(--teal);color:#fff;">Tęsti be įrašymo</button><button id="ncEnd" class="tctl">Baigti skambutį</button></div>';
+    $('ncManual').onclick=function(){ recorded=false; beginRecording(); };
+    $('ncEnd').onclick=function(){ recorded=false; endCall(); };
+  }
+  // recording (or unrecorded live session) actually begins here; isCall=true only for the phone-call path
+  function beginRecording(isCall){
+    recording=recorded; scribeBtnSet(recorded); recCardLive();
+    clockTimer=setInterval(tickClock,1000);
+    if(recorded){
+      if(isCall) flashConnected();   // "Prijungta — galite kalbėti" cue (call path only)
+      // ADA-262: real-time AI chips + live in-form suggestions are OFF by default (value unclear, cost high).
+      // Code kept modular — flip SHOW_LIVE_AI to true to restore. Batch generation (Generuoti E025) is unaffected.
+      if(SHOW_LIVE_AI){
+        scheduleChips();
+        setTimeout(function(){ if(callState==='connected'&&recorded) offerSuggestion('eta-anamneze','Anamnezė'); },5000);
+        setTimeout(function(){ if(callState==='connected'&&recorded) offerSuggestion('eta-bukle','Būklės vertinimas'); },11000);
+      }
+      if(sim.recfail){ sim.recfail=false; setTimeout(function(){ if(callState==='connected') recordingFailed(); },1600); }
+      if(sim.transfail){ sim.transfail=false; setTimeout(function(){ if(callState==='connected') transcriptionFailed(); },4200); }
+      if(sim.withdraw){ sim.withdraw=false; setTimeout(function(){ if(callState==='connected') consentWithdrawn(); },6000); }
+      setTimeout(function(){ if(callState==='connected'&&recorded) startStream(); },2000);
+    }
+  }
+  // recording failed to start → continue unrecorded / retry / end
+  function recordingFailed(){
+    var rc=$('recCard'); rc.style.borderColor='#F3C7C7';
+    rc.innerHTML='<div style="display:flex;align-items:flex-start;gap:10px;"><span style="width:20px;height:20px;border-radius:50%;background:#FDECEC;color:var(--red);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">!</span><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Nepavyko pradėti įrašymo</div><div style="font-size:12px;color:var(--muted3);margin-top:1px;">Skambutis tęsiasi. Galite bandyti dar kartą arba dokumentuoti rankiniu būdu.</div></div></div><div style="display:flex;gap:6px;margin-top:12px;"><button id="recRetry" class="tctl" style="background:var(--teal);border-color:var(--teal);color:#fff;">Bandyti įrašyti dar kartą</button><button id="recManual" class="tctl">Tęsti be įrašymo</button></div>';
+    $('recRetry').onclick=function(){ recorded=true; recCardLive(); revealStream(); showToast('Įrašymas atkurtas'); };
+    $('recManual').onclick=function(){ recorded=false; recCardLive(); revealStream(); setStatus('connected'); showToast('Tęsiama be įrašymo'); };
+  }
+  // transcription failed — audio retained, manual notes possible
+  function transcriptionFailed(){
+    var eh=$('emptyHint'); if(eh){ eh.style.borderColor='#F3C7C7'; eh.style.color='var(--red)'; eh.innerHTML='⚠ Transkripcija nepasiekiama. Garsas įrašomas; galėsite dokumentuoti rankiniu būdu arba pakartoti vėliau.'; }
+    showToast('Transkripcijos paslauga nepasiekiama');
+  }
+  // patient withdraws consent mid-call → stop recording, offer continue unrecorded / end
+  function consentWithdrawn(){
+    if(streamTimer){clearInterval(streamTimer);streamTimer=null;}
+    openDialog('Pacientas atšaukė sutikimą','Pacientas atšaukė sutikimą įrašyti. Įrašymas sustabdytas.','',
+      [['Baigti skambutį','ghost',function(){ closeDialog(); recorded=false; endCall(); }],
+       ['Tęsti be įrašymo','solid',function(){ closeDialog(); recorded=false; recCardLive(); revealStream(); startStream(); showToast('Įrašymas sustabdytas — tęsiama be įrašymo'); }]]);
+  }
+  function reconnectCard(){ var rc=$('recCard'); rc.style.display='block'; rc.style.borderColor='#F3C7C7'; rc.innerHTML='<div style="display:flex;align-items:center;gap:10px;"><span class="spin-t"></span><div style="flex:1;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Ryšys nutrūko</div><div style="font-size:12px;color:var(--muted3);">Jungiamasi iš naujo… įrašymas pristabdytas.</div></div></div>'; }
+  function networkDrop(){ // dev-triggered; pauses then resumes the same consultation
+    if(callState!=='connected'){ showToast('Ryšio nutrūkimą galima imituoti tik pokalbio metu'); return; }
+    dropped=true; if(streamTimer){clearInterval(streamTimer);streamTimer=null;} if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
+    reconnectCard(); showToast('Ryšys nutrūko — jungiamasi iš naujo');
+    setTimeout(function(){ if(callState!=='connected')return; dropped=false; recCardLive(); clockTimer=setInterval(tickClock,1000); startStream(); showToast('Ryšys atkurtas — tęsiama'); },3000);
+  }
+  function endCall(){
+    if(callState!=='connected')return;
+    callState='stopping'; recording=false; hideListening();
+    if(streamTimer){clearInterval(streamTimer);streamTimer=null;} if(clockTimer){clearInterval(clockTimer);clockTimer=null;}
+    callBtnSet('idle'); scribeBtnSet(false); finalizeTranscript();
+  }
+  function finalizeTranscript(){
+    statusCard('Stabdoma transkripcija…');
+    setTimeout(function(){
+      if(sim.finalFail){ sim.finalFail=false; finalizeFail(); return; }
+      callState='ended'; setStatus('docpending'); recCardFinal(); showToast('Transkriptas sėkmingai išsaugotas');
+    },1000);
+  }
+  function finalizeFail(){ // finalization failure + retry; Generate stays disabled until it succeeds
+    var rc=$('recCard'); rc.style.display='block'; rc.style.borderColor='#F3C7C7';
+    rc.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="width:20px;height:20px;border-radius:50%;background:#FDECEC;color:var(--red);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;">!</span><div style="flex:1;min-width:120px;"><div style="font-size:14px;font-weight:600;color:var(--ink-s);">Nepavyko užbaigti transkripto</div><div style="font-size:12px;color:var(--muted3);">Įrašas išsaugotas vietoje. Bandykite užbaigti dar kartą.</div></div><button id="retryFinalBtn" class="tctl">Pakartoti</button></div>';
+    var rb=$('retryFinalBtn'); if(rb) rb.onclick=function(){ finalizeTranscript(); };
+  }
+  // ---- pre-call confirmation modal (confirm patient + number + consent before dialing) ----
+  var callModal=$('callModal'), _lastFocus=null;
+  function initials(name){ var p=(name||'').trim().split(/\s+/); return ((p[0]||'')[0]||'')+((p[1]||'')[0]||''); }
+  // ---- generic dialog (submit / callback / consent-withdraw / resume) ----
+  var dlg=$('dlg'), _dlgFocus=null;
+  function openDialog(title,sub,bodyHtml,actions){
+    $('dlgTitle').textContent=title; $('dlgSub').textContent=sub||''; $('dlgSub').style.display=sub?'block':'none';
+    $('dlgBody').innerHTML=bodyHtml||''; var a=$('dlgActions'); a.innerHTML='';
+    (actions||[]).forEach(function(o){ var b=document.createElement('button'); b.textContent=o[0];
+      b.className=(o[1]==='solid')?'btn-call':'btn-cancel'; if(o[1]==='danger'){b.className='btn-call';b.style.background='var(--red)';}
+      b.onclick=o[2]; a.appendChild(b); });
+    _dlgFocus=document.activeElement; dlg.classList.add('open');
+    setTimeout(function(){ var f=$('dlgBody').querySelector('input,select,button')||a.lastChild; if(f)f.focus(); },40);
+  }
+  function closeDialog(){ dlg.classList.remove('open'); if(_dlgFocus&&_dlgFocus.focus)_dlgFocus.focus(); }
+  dlg.addEventListener('click',function(e){ if(e.target===dlg) closeDialog(); });
+  dlg.addEventListener('keydown',function(e){ if(e.key==='Escape'){ e.preventDefault(); closeDialog(); } });
+  var CI_OK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle></svg>';
+  var CI_MISS='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>';
+  // ADA-262: number lives only in the modal; identity + consent removed. Editable phone gates the Skambinti button.
+  function openCallModal(){
+    var p=activePat, nm=(($('pname').value||'').trim())||(p&&p.n)||'Pacientas';
+    $('cmName').textContent=nm; $('cmAv').textContent=(initials(nm)||'P').toUpperCase();
+    var age=p?ageFromDob(p.dob):null; $('cmMeta').textContent=[(age!=null?age+' m.':''),(p&&p.sex)||''].filter(Boolean).join(' · ');
+    $('cmSrc').textContent=(p&&p.src==='Varutis')?'· iš Varutis':'· įvesta rankiniu būdu';
+    pphone.value=(p&&p.phone)||''; refreshPhone();
+    _lastFocus=document.activeElement; callModal.classList.add('open');
+    setTimeout(function(){ pphone.focus(); },40);
+  }
+  function closeCallModal(){ callModal.classList.remove('open'); if(_lastFocus&&_lastFocus.focus)_lastFocus.focus(); }
+  function confirmCall(){ if($('cmCall').disabled)return; if(activePat)activePat.phone=pphone.value; closeCallModal(); startCall(true); }
+  $('cmCancel').onclick=closeCallModal;
+  $('cmCall').onclick=confirmCall;
+  callModal.addEventListener('click',function(e){ if(e.target===callModal) closeCallModal(); });
+  callModal.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){ e.preventDefault(); closeCallModal(); return; }
+    if(e.key==='Enter'&&!$('cmCall').disabled){ e.preventDefault(); confirmCall(); return; }
+  });
+  callBtn.onclick=function(){ if(callState==='ready'||callState==='ended') openCallModal(); else if(callState==='connected') endCall(); else if(callState==='connecting'||callState==='ringing') cancelCall(); };
+
+  // ---- editable patient phone (inside the call modal); gates the modal's Skambinti button on a valid LT mobile ----
+  var pphone=$('pphone'), phoneWrap=$('phoneWrap'), phoneValid=false;
+  function normPhone(raw){ var d=(raw||'').replace(/\D/g,''); if(d.indexOf('00370')===0)d=d.slice(5); else if(d.indexOf('370')===0)d=d.slice(3); else if(d.charAt(0)==='8')d=d.slice(1); return d.slice(0,8); }
+  function fmtPhone(n){ if(!n.length)return ''; var o='+370 '+n.slice(0,3); if(n.length>3)o+=' '+n.slice(3,8); return o; }
+  function updateCallGate(){
+    // header call button always opens the modal; the modal's Skambinti is gated by a valid number
+    var cb=$('cmCall'); if(cb){ cb.disabled=!phoneValid; cb.style.opacity=phoneValid?'1':'.5'; cb.style.cursor=phoneValid?'pointer':'not-allowed'; }
+  }
+  function refreshPhone(){
+    var n=normPhone(pphone.value); pphone.value=fmtPhone(n);
+    try{ pphone.setSelectionRange(pphone.value.length,pphone.value.length); }catch(e){}
+    var empty=!n.length; phoneValid=(n.length===8 && n.charAt(0)==='6');
+    phoneWrap.classList.toggle('invalid', !empty && !phoneValid);
+    phoneWrap.classList.toggle('valid', phoneValid);
+    phoneWrap.title = phoneValid ? 'Numeris teisingas' : (empty ? 'Įveskite telefono numerį' : 'Neteisingas numeris — +370 6XX XXXXX');
+    updateCallGate();
+  }
+  if(pphone){ pphone.addEventListener('input',refreshPhone); phoneWrap.addEventListener('click',function(e){ if(e.target!==pphone) pphone.focus(); }); refreshPhone(); }
+  scribeBtn.onclick=function(){ if(callState==='connected') endCall(); else if(callState==='ready'||callState==='ended') startScribe(); };
+
+  function panelOverlay(html){
+    var p=$('panel-E025'); var ex=$('genOv'); if(ex)ex.remove();
+    var kids=Array.prototype.slice.call(p.children);
+    var ov=document.createElement('div'); ov.id='genOv';
+    ov.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:64px 20px;text-align:center;color:var(--muted3);';
+    ov.innerHTML=html; kids.forEach(function(c){c.style.display='none';}); p.appendChild(ov);
+    return {el:ov, restore:function(){ if(ov.parentNode)ov.remove(); kids.forEach(function(c){c.style.display='';}); }};
+  }
+  function generateE025(){
+    selectDoc(true); if(generated)return;
+    if(capturedLines===0){ genInsufficient(); return; }   // reflect captured content — nothing to generate
+    // skeleton loader (perceived performance) — shape hints at the E025 form being filled
+    function skRow(w){ return '<div style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px;"><div class="sk" style="width:120px;height:10px;"></div><div class="sk" style="width:'+w+';"></div><div class="sk" style="width:'+(parseInt(w)-18)+'%;"></div></div>'; }
+    var h=panelOverlay('<div style="display:flex;align-items:center;gap:10px;align-self:flex-start;"><div style="width:22px;height:22px;border:3px solid var(--teal-tint);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:15px;font-weight:600;color:var(--ink-s);">Analizuojama transkripcija…</div></div><div style="font-size:13px;align-self:flex-start;margin:-4px 0 8px 32px;">Galite tęsti kitus veiksmus arba pradėti naują sesiją.</div>'+skRow('92%')+'<div style="height:6px;"></div>'+skRow('84%')+'<div style="height:6px;"></div>'+skRow('78%'));
+    h.el.style.alignItems='flex-start'; h.el.style.textAlign='left'; h.el.style.gap='14px';
+    setTimeout(function(){
+      if(sim.genFail){ sim.genFail=false; h.restore(); genError(); return; }
+      h.restore(); fillE025(); generated=true; postSummary();
+    },2200);
+  }
+  function genInsufficient(){
+    var h=panelOverlay('<div style="width:42px;height:42px;border-radius:50%;background:#FFF7E6;color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:20px;">⚠</div><div style="font-size:15px;font-weight:600;color:var(--ink-s);">Nepakanka transkripcijos duomenų</div><div style="font-size:13px;max-width:340px;line-height:1.5;">Pokalbio metu neužfiksuota medicininės informacijos, todėl E025 negeneruojamas. Tęskite konsultaciją arba užpildykite laukus rankiniu būdu.</div><button id="giBack" class="tctl" style="margin-top:6px;">Grįžti į formą</button>');
+    var b=$('giBack'); if(b) b.onclick=function(){ h.restore(); };
+  }
+  function genError(){
+    setStatus('aifail');
+    var h=panelOverlay('<div style="width:42px;height:42px;border-radius:50%;background:#FDECEC;color:var(--red);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;">!</div><div style="font-size:15px;font-weight:600;color:var(--ink-s);">Nepavyko sugeneruoti E025</div><div style="font-size:13px;max-width:320px;line-height:1.5;">Įvyko klaida analizuojant transkripciją. Transkriptas nepakito. Galite pakartoti arba pildyti rankiniu būdu.</div><div style="display:flex;gap:8px;margin-top:6px;"><button id="geRetry" class="e025btn solid">Pakartoti</button><button id="geManual" class="e025btn ghost">Pildyti rankiniu būdu</button></div>');
+    var b=$('geRetry'); if(b) b.onclick=function(){ h.restore(); generateE025(); };
+    var m=$('geManual'); if(m) m.onclick=function(){ setStatus('docpending'); h.restore(); };
+  }
+  // ---- E025 required-field validation + save draft + submit to EPTS ----
+  function e025Required(){ return [['eta-anamneze','Nusiskundimai ir anamnezė'],['eta-diagnoze','Diagnozė']]; }
+  function e025Missing(){ return e025Required().filter(function(f){ var t=$(f[0]); return !t||!t.value.trim(); }); }
+  $('e025Draft').onclick=function(){ savedDraft=true; setStatus('savedraft'); showToast('Išsaugota kaip juodraštis'); };
+  $('e025Regen').onclick=function(){
+    var edited=['eta-anamneze','eta-diagnoze','eta-bukle','eta-planas'].some(function(id){var t=$(id);return t&&t.value.trim();});
+    if(edited){ openDialog('Pergeneruoti E025?','Esami įrašai bus perrašyti nauju AI juodraščiu.','',[['Atšaukti','ghost',closeDialog],['Pergeneruoti','solid',function(){ closeDialog(); generated=false; accepted={}; ['eta-anamneze','eta-diagnoze','eta-bukle','eta-planas'].forEach(function(id){var t=$(id);if(t)t.value='';}); generateE025(); }]]); }
+    else { generated=false; generateE025(); }
+  };
+  $('e025Send').onclick=function(){
+    var miss=e025Missing();
+    if(miss.length){ openDialog('Trūksta privalomų laukų','Prieš siųsdami į EPTS užpildykite:','<ul style="margin:0;padding-left:18px;font-size:13px;color:var(--ink-f);line-height:1.7;">'+miss.map(function(m){return '<li>'+m[1]+'</li>';}).join('')+'</ul>',[['Gerai','solid',function(){ closeDialog(); showTab('E025'); var f=$(miss[0][0]); if(f)f.focus(); }]]); return; }
+    openDialog('Siųsti E025 į EPTS?','Dokumentas bus pateiktas į paciento sveikatos istoriją ir taps neredaguojamas.','',[['Atšaukti','ghost',closeDialog],['Siųsti','solid',submitE025]]);
+  };
+  function submitE025(){
+    closeDialog(); showTab('E025');
+    var h=panelOverlay('<div style="width:34px;height:34px;border:3px solid var(--teal-tint);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:15px;font-weight:600;color:var(--ink-s);">Siunčiama į EPTS…</div>');
+    setTimeout(function(){ h.restore(); if(sim.saveFail){ sim.saveFail=false; submitFail(); return; } setStatus('submitted'); submitSuccess(); },1800);
+  }
+  function submitSuccess(){
+    var h=panelOverlay('<div style="width:46px;height:46px;border-radius:50%;background:#E6F4EA;color:#166534;display:flex;align-items:center;justify-content:center;font-size:24px;">✓</div><div style="font-size:16px;font-weight:700;color:var(--ink-s);">E025 pateikta į EPTS</div><div style="font-size:13px;max-width:320px;line-height:1.5;">Konsultacija baigta ir dokumentuota. Įrašas neredaguojamas.</div><button id="subDone" class="e025btn solid" style="margin-top:8px;">Baigti</button>');
+    h.el.style.gap='12px'; $('subDone').onclick=function(){ h.restore(); showToast('Konsultacija baigta'); };
+  }
+  function submitFail(){
+    setStatus('docpending');
+    var h=panelOverlay('<div style="width:46px;height:46px;border-radius:50%;background:#FDECEC;color:var(--red);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;">!</div><div style="font-size:16px;font-weight:700;color:var(--ink-s);">Nepavyko išsiųsti į EPTS</div><div style="font-size:13px;max-width:340px;line-height:1.5;">Ryšys su EPTS nepavyko. Juodraštis išsaugotas vietoje — bandykite dar kartą.</div><div style="display:flex;gap:8px;margin-top:8px;"><button id="subRetry" class="e025btn solid">Bandyti dar kartą</button><button id="subDraft" class="e025btn ghost">Palikti juodraštį</button></div>');
+    h.el.style.gap='12px';
+    $('subRetry').onclick=function(){ h.restore(); submitE025(); };
+    $('subDraft').onclick=function(){ h.restore(); savedDraft=true; setStatus('savedraft'); showToast('Išsaugota kaip juodraštis'); };
+  }
+  function setField(id){ var t=$(id); if(!t||accepted[id])return; t.value=SUGG[id]; t.style.transition='background .5s'; t.style.background='#EAF7F0'; setTimeout(function(){t.style.background='';},700); }
+  function fillE025(){ // reflect captured content: fill only sections the transcript supports
+    var full=capturedLines>=5;
+    setField('eta-anamneze');
+    if(capturedLines>=4) setField('eta-bukle');
+    if(full){ setField('eta-diagnoze'); setField('eta-planas'); }
+  }
+  function chip(t){return '<button class="nextchip" style="text-align:left;background:#F5F8F8;border:1px solid var(--border2);border-radius:9px;padding:9px 12px;font-size:13px;font-weight:500;color:#37504F;cursor:pointer;display:flex;align-items:center;gap:8px;"><span style="color:var(--teal);">→</span>'+t+'</button>';}
+  function postSummary(){
+    var cs=$('chatScroll');
+    var d=document.createElement('div'); d.className='note new'; d.style.cssText='border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:block;background:#fff;';
+    var partial=capturedLines<5;
+    var warn=partial?'<div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:8px;">⚠ Dalinė forma — transkripcija trumpa. Užpildytos tik pagrįstos skiltys; likusias peržiūrėkite rankiniu būdu.</div>':'';
+    d.innerHTML='<div style="font-size:13px;font-weight:600;color:#3AA655;display:flex;align-items:center;gap:6px;margin-bottom:8px;">✓ E025 juodraštis paruoštas</div>'+warn+'<p style="margin:0 0 10px;font-size:14px;line-height:1.55;color:var(--ink-f);">Užpildyta iš transkripcijos ir gydytojo pastabos (teigiamas Finkelšteino testas). Peržiūrėkite prieš siųsdami.</p><div style="font-size:13px;font-weight:600;color:var(--ink-s);margin-bottom:6px;">Toliau:</div><div style="display:flex;flex-direction:column;gap:6px;">'+chip('Pridėti ICD-10 kodus')+chip('Parengti paciento instrukcijas')+chip('Siųsti į EPTS')+'</div>';
+    cs.appendChild(d); cs.scrollTop=cs.scrollHeight;
+  }
+
+  // ---- live, in-place AI suggestions in the E025 form (non-interrupting) ----
+  function offerSuggestion(id,label){
+    var t=$(id); if(!t||accepted[id])return;
+    var body=t.closest('.ebody'); if(!body||body.querySelector('.ai-sugg'))return;
+    var strip=document.createElement('div'); strip.className='ai-sugg';
+    strip.style.cssText='border:1px solid var(--teal-bd);background:var(--teal-tint);border-radius:10px;padding:10px 12px;margin-bottom:12px;animation:noteIn .3s ease-out;';
+    strip.innerHTML='<div style="display:flex;align-items:center;gap:8px;"><span class="aibadge">✦ AI</span><span style="flex:1;font-size:13px;font-weight:600;color:var(--teal);">AI paruošė siūlymą — '+label+'</span><button class="sugToggle e025btn tint" style="height:30px;padding:0 12px;">Peržiūrėti</button></div><div class="sugPanel" style="display:none;margin-top:10px;"><div style="font-size:13px;line-height:1.55;color:#28403F;background:#fff;border:1px solid var(--border);border-radius:8px;padding:10px 12px;">'+SUGG[id]+'</div><div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><span style="font-size:12px;color:var(--muted3);margin-right:auto;">Patikimumas <b style="color:var(--teal);font-variant-numeric:tabular-nums;">'+(id==='eta-anamneze'?'94%':'91%')+'</b></span><button class="sugAccept e025btn solid" style="height:32px;">✓ Priimti</button><button class="sugEdit e025btn ghost" style="height:32px;">Redaguoti</button><button class="sugDismiss e025btn ghost" style="height:32px;">Atmesti</button></div></div>';
+    body.insertBefore(strip,body.firstChild);
+    var panel=strip.querySelector('.sugPanel');
+    function flash(){ t.style.transition='background .5s'; t.style.background='#EAF7F0'; setTimeout(function(){t.style.background='';},700); }
+    strip.querySelector('.sugToggle').onclick=function(){ panel.style.display=(panel.style.display==='none')?'block':'none'; };
+    strip.querySelector('.sugAccept').onclick=function(){ t.value=SUGG[id]; accepted[id]=true; flash(); strip.remove(); showToast('Įrašyta į E025 · '+label); };
+    strip.querySelector('.sugEdit').onclick=function(){ t.value=SUGG[id]; accepted[id]=true; strip.remove(); t.focus(); try{t.setSelectionRange(t.value.length,t.value.length);}catch(e){} };
+    strip.querySelector('.sugDismiss').onclick=function(){ strip.remove(); }; // Generate can still fill it later
+  }
+
+  // Esc cancels an in-progress call during Connecting / Ringing
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&(callState==='connecting'||callState==='ringing'))cancelCall(); });
+
+  // ---- simulation menu (prototype only) — arm failure / edge scenarios ----
+  (function(){
+    var d=document.createElement('details'); d.id='simMenu'; d.style.cssText='position:fixed;left:12px;bottom:12px;z-index:60;';
+    d.innerHTML='<summary style="list-style:none;width:32px;height:32px;border-radius:9px;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted3);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.06);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></summary>';
+    var panel=document.createElement('div'); panel.style.cssText='position:absolute;left:0;bottom:40px;width:250px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:8px;';
+    var ti=document.createElement('div'); ti.textContent='Imituoti scenarijų'; ti.style.cssText='font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted2);padding:4px 6px 8px;'; panel.appendChild(ti);
+    [['Kitas skambutis: pacientas atmeta','decline'],['Kitas skambutis: užimta','busy'],['Kitas skambutis: nėra atsakymo','noanswer'],['Kitas skambutis: balso paštas','voicemail'],['Kitas skambutis: neteisingas numeris','invalid'],['Kitas skambutis: nepavyksta prisijungti','fail'],['Kitas skambutis: telefonija nepasiekiama','telfail'],['Kitas skambutis: nepavyksta įrašyti','recfail'],['Kitas skambutis: transkripcija nepasiekiama','transfail'],['Nutraukti ryšį (pokalbio metu)','drop'],['Klaida generuojant E025','genFail'],['Klaida užbaigiant transkriptą','finalFail'],['Klaida siunčiant į EPTS','saveFail']].forEach(function(o){
+      var b=document.createElement('button'); b.type='button'; b.textContent=o[0];
+      b.style.cssText='display:block;width:100%;text-align:left;padding:8px;border:none;background:transparent;font:inherit;font-size:13px;color:var(--ink-f);border-radius:8px;cursor:pointer;';
+      b.onmouseenter=function(){b.style.background='#F6F7F9';}; b.onmouseleave=function(){b.style.background='transparent';};
+      b.onclick=function(){ if(o[1]==='drop'){ networkDrop(); } else { sim[o[1]]=true; showToast('Nustatyta: '+o[0]); } d.open=false; };
+      panel.appendChild(b);
+    });
+    d.appendChild(panel); document.body.appendChild(d);
+  })();
+
+})();
+</script>
+</body>
+</html>
